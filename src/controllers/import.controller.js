@@ -14,12 +14,12 @@ class ImportController {
 
     const adapter = new CsvImportAdapter(req.file.buffer);
     const items = await adapter.parse();
-    const result = await this.importService.processItems({
+    const result = await this.importService.enqueueItems({
       fonte: "csv",
       items,
     });
 
-    logger.info("Importacao CSV finalizada", {
+    logger.info("Importacao CSV aceita para processamento", {
       importacao_id: result.id,
       total_itens: items.length,
       filename: req.file.originalname,
@@ -38,12 +38,12 @@ class ImportController {
       fonte: "json",
     }));
 
-    const result = await this.importService.processItems({
+    const result = await this.importService.enqueueItems({
       fonte: "json",
       items: normalizedItems,
     });
 
-    logger.info("Importacao JSON finalizada", {
+    logger.info("Importacao JSON aceita para processamento", {
       importacao_id: result.id,
       total_itens: normalizedItems.length,
       status: result.status,

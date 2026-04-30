@@ -33,6 +33,35 @@ class ImportacaoRepository {
     });
   }
 
+  async incrementImportacaoCounters(id, counters) {
+    const data = {};
+
+    if (counters.itens_processados) {
+      data.itens_processados = { increment: counters.itens_processados };
+    }
+
+    if (counters.itens_sucesso) {
+      data.itens_sucesso = { increment: counters.itens_sucesso };
+    }
+
+    if (counters.itens_falha) {
+      data.itens_falha = { increment: counters.itens_falha };
+    }
+
+    if (counters.itens_revisao) {
+      data.itens_revisao = { increment: counters.itens_revisao };
+    }
+
+    if (!Object.keys(data).length) {
+      return prisma.importacao.findUnique({ where: { id } });
+    }
+
+    return prisma.importacao.update({
+      where: { id },
+      data,
+    });
+  }
+
   createItem(data) {
     return prisma.itemImportacao.create({
       data: {

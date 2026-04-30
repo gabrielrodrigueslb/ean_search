@@ -66,6 +66,7 @@ No MVP atual, as fontes foram pensadas assim:
 
 - O `EAN` vive na tabela de `apresentacoes`, nao em `produtos`.
 - Um `produto` pode ter mais de uma `apresentacao`.
+- Cada `apresentacao` pode ter um `nome_exibicao` proprio, pensado para uso em busca e atendimento ao cliente.
 - Produtos de perfumaria podem nao existir no `FarmaIndex`.
 - Nao exigimos campos clinicos para perfumaria.
 - Divergencia nao gera update automatico; gera revisao.
@@ -279,6 +280,7 @@ Campos principais:
 - `id`
 - `produto_id`
 - `ean`
+- `nome_exibicao`
 - `descricao`
 - `dose`
 - `unidade`
@@ -295,6 +297,7 @@ Campos principais:
 Uso:
 
 - guarda o `EAN`;
+- guarda tambem um texto mais amigavel para exibicao ao cliente quando houver;
 - concentra atributos da apresentacao;
 - permite multiplas apresentacoes para o mesmo produto.
 
@@ -813,7 +816,7 @@ Responsabilidades:
 - decidir tipo do produto;
 - extrair farmacos do detalhe do `FarmaIndex`;
 - montar o snapshot interno padronizado;
-- consolidar nome comercial, apresentacao e metadados.
+- consolidar nome comercial, `nome_exibicao` da apresentacao e metadados.
 
 Ponto importante:
 
@@ -848,8 +851,10 @@ Camada de negocio de consulta e criacao de produto.
 Responsabilidades:
 
 - montar o agregado de resposta para `GET /products/ean/:ean`;
+- montar a resposta achatada por apresentacao para `GET /products?q=...`;
 - adicionar revisoes pendentes ligadas ao mesmo EAN;
-- criar produto a partir do snapshot montado pelo enrichment.
+- criar produto a partir do snapshot montado pelo enrichment;
+- aplicar fallback de `nome_exibicao` quando o valor ainda nao estiver persistido.
 
 ### `src/services/review.service.js`
 
@@ -966,6 +971,8 @@ Entrada:
 Uso:
 
 - importa itens a partir de CSV.
+- responde imediatamente com `202` e o `id` da importacao.
+- o processamento continua em background, com logs no terminal.
 
 ### `POST /imports/json`
 
@@ -985,14 +992,42 @@ Entrada:
 Uso:
 
 - caminho alternativo para testes e futuras integracoes.
+- responde imediatamente com `202` e o `id` da importacao.
+- o processamento continua em background, com logs no terminal.
 
 ### `GET /imports/:id`
 
 Uso:
 
-- consultar o status de um lote.
+- consultar o status e os contadores de um lote.
 
 ## 7.3 Produtos
+
+### `GET /products?q=...`
+
+Busca textual voltada para linguagem natural.
+
+Esse endpoint procura ao mesmo tempo em:
+
+- `produto.nome`
+- `produto.slug`
+- `apresentacao.nome_exibicao`
+- `apresentacao.descricao`
+- `apresentacao.forma_farmaceutica`
+- `apresentacao.quantidade`
+- `apresentacao.dose`
+
+Importante:
+
+- a resposta e achatada por `apresentacao`;
+- cada item retornado representa uma opcao vendavel ligada a um `EAN`;
+- isso foi pensado para facilitar consumo por IA e por interfaces de atendimento.
+
+Exemplo:
+
+```bash
+curl "http://localhost:3000/products?q=dorflex comprimidos"
+```
 
 ### `GET /products/ean/:ean`
 
@@ -1002,6 +1037,8 @@ Retorna:
 - apresentacoes;
 - farmacos;
 - revisoes pendentes relacionadas.
+
+Esse endpoint continua retornando o formato agregado por produto.
 
 ## 7.4 Revisoes
 
@@ -1243,4 +1280,3 @@ E essa e a linha que organiza a implementacao inteira:
 - repositories na persistencia;
 - IA como apoio de decisao;
 - humano como aprovador final.
-

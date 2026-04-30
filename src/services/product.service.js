@@ -9,6 +9,30 @@ class ProductService {
     this.solicitacaoRevisaoRepository = new SolicitacaoRevisaoRepository();
   }
 
+  resolveNomeExibicao(produtoNome, apresentacao) {
+    if (apresentacao?.nome_exibicao) {
+      return apresentacao.nome_exibicao;
+    }
+
+    const descricao = apresentacao?.descricao;
+    if (!produtoNome && !descricao) {
+      return null;
+    }
+
+    if (!descricao) {
+      return produtoNome;
+    }
+
+    const normalizedNome = normalizeText(produtoNome || "");
+    const normalizedDescricao = normalizeText(descricao);
+
+    if (normalizedNome && normalizedDescricao.includes(normalizedNome)) {
+      return descricao;
+    }
+
+    return [produtoNome, descricao].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  }
+
   mapProdutoAggregate(apresentacaoRecord) {
     if (!apresentacaoRecord) {
       return null;
@@ -35,6 +59,7 @@ class ProductService {
       apresentacoes: produto.apresentacoes.map((item) => ({
         id: item.id,
         ean: item.ean,
+        nome_exibicao: this.resolveNomeExibicao(produto.nome, item),
         descricao: item.descricao,
         dose: item.dose,
         unidade: item.unidade,
@@ -75,6 +100,7 @@ class ProductService {
       apresentacoes: produto.apresentacoes.map((item) => ({
         id: item.id,
         ean: item.ean,
+        nome_exibicao: this.resolveNomeExibicao(produto.nome, item),
         descricao: item.descricao,
         dose: item.dose,
         unidade: item.unidade,
@@ -92,6 +118,159 @@ class ProductService {
         nome_normalizado: item.farmaco.nome_normalizado,
         slug: item.farmaco.slug,
       })),
+    };
+  }
+
+  mapPresentationSearchResult(aggregate, apresentacao) {
+    const nomeExibicao = this.resolveNomeExibicao(aggregate.produto.nome, apresentacao);
+
+    return {
+      id: apresentacao.id,
+      produto_id: aggregate.produto.id,
+      nome: aggregate.produto.nome,
+      nome_exibicao: nomeExibicao,
+      nome_normalizado: aggregate.produto.nome_normalizado,
+      slug: aggregate.produto.slug,
+      tipo: aggregate.produto.tipo,
+      laboratorio: aggregate.produto.laboratorio,
+      laboratorio_slug: aggregate.produto.laboratorio_slug,
+      classe: aggregate.produto.classe,
+      classe_slug: aggregate.produto.classe_slug,
+      categoria: aggregate.produto.categoria,
+      origem_nome: aggregate.produto.origem_nome,
+      ean: apresentacao.ean,
+      nome_exibicao_apresentacao: nomeExibicao,
+      descricao: apresentacao.descricao,
+      dose: apresentacao.dose,
+      unidade: apresentacao.unidade,
+      forma_farmaceutica: apresentacao.forma_farmaceutica,
+      via_administracao: apresentacao.via_administracao,
+      quantidade: apresentacao.quantidade,
+      volume: apresentacao.volume,
+      registro_ms: apresentacao.registro_ms,
+      tarja: apresentacao.tarja,
+      origem_dados: apresentacao.origem_dados,
+      farmacos: aggregate.farmacos,
+      created_at: aggregate.produto.created_at,
+      updated_at: aggregate.produto.updated_at,
+    };
+  }
+
+  buildPresentationSearchText(apresentacao) {
+    return normalizeText([
+      apresentacao.nome_exibicao,
+      apresentacao.descricao,
+      apresentacao.forma_farmaceutica,
+      apresentacao.quantidade,
+      apresentacao.dose,
+      apresentacao.unidade,
+      apresentacao.via_administracao,
+      apresentacao.tarja,
+      apresentacao.ean,
+    ].filter(Boolean).join(" "));
+  }
+
+  normalizeSearchTokens(value) {
+    const synonymMap = {
+      comp: "comprimido",
+      comps: "comprimido",
+      comprimidos: "comprimido",
+      comprimido: "comprimido",
+      cp: "comprimido",
+      cps: "comprimido",
+      caps: "capsula",
+      capsula: "capsula",
+      capsulas: "capsula",
+      gota: "solucao",
+      gotas: "solucao",
+      solucao: "solucao",
+      solucoes: "solucao",
+      xarope: "xarope",
+      xaropes: "xarope",
+      efervescente: "efervescente",
+      efervescentes: "efervescente",
+      revestido: "revestido",
+      revestidos: "revestido",
+    };
+
+    return [...new Set(
+      normalizeText(value)
+        .split(" ")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .map((token) => synonymMap[token] || token)
+    )];
+  }
+
+  tokenizeTextForSearch(value) {
+    return this.normalizeSearchTokens(value);
+  }
+
+  scorePresentation(apresentacao, tokens) {
+    const text = this.buildPresentationSearchText(apresentacao);
+    let score = 0;
+
+    for (const token of tokens) {
+      if (!token) {
+        continue;
+      }
+
+      if (text.includes(token)) {
+        score += 3;
+      }
+
+      if (normalizeText(apresentacao.forma_farmaceutica || "").includes(token)) {
+        score += 5;
+      }
+
+      if (normalizeText(apresentacao.descricao || "").includes(token)) {
+        score += 4;
+      }
+    }
+
+    return score;
+  }
+
+  tokensMatchCombinedText(tokens, productText, presentationText) {
+    const combined = `${productText} ${presentationText}`.trim();
+    return tokens.every((token) => combined.includes(token));
+  }
+
+  scoreProdutoAggregate(aggregate, tokens) {
+    const nomeText = normalizeText([
+      aggregate.produto.nome,
+      aggregate.produto.nome_normalizado,
+      aggregate.produto.slug,
+      aggregate.produto.classe,
+      aggregate.produto.categoria,
+    ].filter(Boolean).join(" "));
+
+    let score = 0;
+    for (const token of tokens) {
+      if (!token) {
+        continue;
+      }
+
+      if (nomeText.includes(token)) {
+        score += 6;
+      }
+    }
+
+    const presentationsWithScore = aggregate.apresentacoes
+      .map((apresentacao) => ({
+        ...apresentacao,
+        _searchText: this.buildPresentationSearchText(apresentacao),
+        _score: this.scorePresentation(apresentacao, tokens),
+      }))
+      .sort((a, b) => b._score - a._score || a.id - b.id);
+
+    const topPresentationScore = presentationsWithScore[0]?._score || 0;
+    score += topPresentationScore;
+
+    return {
+      score,
+      nomeText,
+      apresentacoes: presentationsWithScore,
     };
   }
 
@@ -113,15 +292,49 @@ class ProductService {
   async search({ nome, slug, q, limit }) {
     const normalizedQ = q ? normalizeText(q) : "";
     const normalizedNome = nome ? normalizeText(nome) : "";
+    const tokens = this.normalizeSearchTokens(`${nome || ""} ${slug || ""} ${q || ""}`);
 
     const records = await this.produtoRepository.searchProdutos({
       nome: nome || q || "",
       nome_normalizado: normalizedNome || normalizedQ,
       slug: slug || q || "",
+      tokens,
       limit: limit ? Number(limit) : 20,
     });
 
-    return records.map((record) => this.mapProdutoFromRecord(record));
+    const ranked = records
+      .map((record) => {
+        const aggregate = this.mapProdutoFromRecord(record);
+        const { score, apresentacoes, nomeText } = this.scoreProdutoAggregate(aggregate, tokens);
+
+        const matchedApresentacoes = tokens.length
+          ? apresentacoes.filter((item) =>
+              this.tokensMatchCombinedText(tokens, nomeText, item._searchText || ""),
+            )
+          : apresentacoes;
+
+        const finalApresentacoes = matchedApresentacoes.length
+          ? matchedApresentacoes
+          : (
+              !aggregate.apresentacoes.length && this.tokensMatchCombinedText(tokens, nomeText, "")
+                ? apresentacoes
+                : []
+            );
+
+        return {
+          ...aggregate,
+          apresentacoes: finalApresentacoes.map(
+            ({ _score, _searchText, ...rest }) => rest,
+          ),
+          _score: matchedApresentacoes.length ? score + 10 : score,
+        };
+      })
+      .filter((item) => (tokens.length ? item.apresentacoes.length > 0 : item._score > 0 || !tokens.length))
+      .sort((a, b) => b._score - a._score || a.produto.nome.localeCompare(b.produto.nome));
+
+    return ranked.flatMap(({ _score, ...item }) =>
+      item.apresentacoes.map((apresentacao) => this.mapPresentationSearchResult(item, apresentacao)),
+    );
   }
 
   async createFromSnapshot(snapshot) {

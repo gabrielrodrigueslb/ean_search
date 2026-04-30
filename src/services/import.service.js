@@ -6,6 +6,8 @@ const { EnrichmentService } = require("./enrichment.service");
 const { AiService } = require("./ai.service");
 const { ImportacaoRepository } = require("../repositories/importacao.repository");
 const { EanNaoEncontradoRepository } = require("../repositories/ean-nao-encontrado.repository");
+const { importQueueService } = require("./import-queue.service");
+const env = require("../config/env");
 const { logger } = require("../utils/logger");
 
 class ImportService {
@@ -16,49 +18,53 @@ class ImportService {
     this.enrichmentService = new EnrichmentService();
     this.aiService = new AiService();
     this.eanNaoEncontradoRepository = new EanNaoEncontradoRepository();
+    this.itemConcurrency = Math.max(1, env.importItemConcurrency || 5);
   }
 
-  async processItems({ fonte, items }) {
+  async enqueueItems({ fonte, items }) {
     const importacao = await this.importacaoRepository.createImportacao({
       fonte,
-      status: "processing",
+      status: "pending",
       total_itens: items.length,
     });
 
-    logger.info("Processamento da importacao iniciado", {
+    logger.info("Importacao criada e aguardando processamento", {
       importacao_id: importacao.id,
       fonte,
       total_itens: items.length,
     });
 
+    importQueueService.enqueue({
+      importacaoId: importacao.id,
+      handler: () => this.processItems({ importacaoId: importacao.id, fonte, items }),
+    });
+
+    return importacao;
+  }
+
+  async processItems({ importacaoId, fonte, items }) {
+    await this.importacaoRepository.updateImportacao(importacaoId, {
+      status: "processing",
+    });
+
+    logger.info("Processamento da importacao iniciado", {
+      importacao_id: importacaoId,
+      fonte,
+      total_itens: items.length,
+      concorrencia_itens: this.itemConcurrency,
+    });
+
     try {
-      for (const item of items) {
-        await this.processSingleItem(importacao.id, item);
-      }
+      await this.processItemsWithConcurrency(importacaoId, items);
 
-      const finished = await this.importacaoRepository.findImportacaoById(importacao.id);
-      const totals = finished.itens.reduce(
-        (acc, item) => {
-          acc.processed += 1;
-          if (item.status === "enriched") acc.success += 1;
-          if (item.status === "failed" || item.status === "not_found") acc.failed += 1;
-          if (item.status === "review_required") acc.review += 1;
-          return acc;
-        },
-        { processed: 0, success: 0, failed: 0, review: 0 },
-      );
-
-      const updated = await this.importacaoRepository.updateImportacao(importacao.id, {
-        status: totals.failed === items.length ? "failed" : "completed",
-        itens_processados: totals.processed,
-        itens_sucesso: totals.success,
-        itens_falha: totals.failed,
-        itens_revisao: totals.review,
+      const current = await this.importacaoRepository.findImportacaoById(importacaoId);
+      const updated = await this.importacaoRepository.updateImportacao(importacaoId, {
+        status: current && current.itens_falha === items.length ? "failed" : "completed",
         finished_at: new Date(),
       });
 
       logger.info("Processamento da importacao finalizado", {
-        importacao_id: importacao.id,
+        importacao_id: importacaoId,
         status: updated.status,
         itens_processados: updated.itens_processados,
         itens_sucesso: updated.itens_sucesso,
@@ -68,19 +74,59 @@ class ImportService {
 
       return updated;
     } catch (error) {
-      await this.importacaoRepository.updateImportacao(importacao.id, {
+      await this.importacaoRepository.updateImportacao(importacaoId, {
         status: "failed",
         finished_at: new Date(),
       });
 
       logger.error("Falha geral da importacao", {
-        importacao_id: importacao.id,
+        importacao_id: importacaoId,
         fonte,
         error: error.message,
       });
 
       throw error;
     }
+  }
+
+  async processItemsWithConcurrency(importacaoId, items) {
+    let currentIndex = 0;
+    const workerCount = Math.min(this.itemConcurrency, items.length || 1);
+
+    const workers = Array.from({ length: workerCount }, (_, workerIndex) => (async () => {
+      while (true) {
+        const itemIndex = currentIndex;
+        currentIndex += 1;
+
+        if (itemIndex >= items.length) {
+          return;
+        }
+
+        const item = items[itemIndex];
+        logger.info("Worker iniciou processamento do item", {
+          importacao_id: importacaoId,
+          worker: workerIndex + 1,
+          item_index: itemIndex,
+          ean_recebido: item.ean,
+        });
+
+        const status = await this.processSingleItem(importacaoId, item);
+        await this.incrementImportCounters(importacaoId, status);
+      }
+    })());
+
+    await Promise.all(workers);
+  }
+
+  async incrementImportCounters(importacaoId, status) {
+    const counters = {
+      itens_processados: 1,
+      itens_sucesso: status === "enriched" ? 1 : 0,
+      itens_falha: status === "failed" || status === "not_found" ? 1 : 0,
+      itens_revisao: status === "review_required" ? 1 : 0,
+    };
+
+    await this.importacaoRepository.incrementImportacaoCounters(importacaoId, counters);
   }
 
   async processSingleItem(importacaoId, item) {
@@ -118,7 +164,7 @@ class ImportService {
           status: "failed",
           mensagem_erro: reason,
         });
-        return;
+        return "failed";
       }
 
       logger.info("Consultando produto local por EAN", {
@@ -149,11 +195,10 @@ class ImportService {
       });
 
       if (existing) {
-        await this.handleExistingProduct({ importItem, ean, existing, enriched });
-        return;
+        return this.handleExistingProduct({ importItem, ean, existing, enriched });
       }
 
-      await this.handleNewProduct({ importItem, ean, item, enriched });
+      return this.handleNewProduct({ importItem, ean, item, enriched });
     } catch (error) {
       logger.error("Falha no processamento do item", {
         importacao_id: importacaoId,
@@ -166,6 +211,8 @@ class ImportService {
         status: "failed",
         mensagem_erro: error.message,
       });
+
+      return "failed";
     }
   }
 
@@ -193,7 +240,7 @@ class ImportService {
         status: "enriched",
         fontes_consultadas: enriched.fontes_tentadas,
       });
-      return;
+      return "enriched";
     }
 
     logger.info("Enviando divergencia para analise de IA", {
@@ -218,7 +265,7 @@ class ImportService {
         status: "enriched",
         fontes_consultadas: enriched.fontes_tentadas,
       });
-      return;
+      return "enriched";
     }
 
     await this.reviewService.createReview({
@@ -246,6 +293,8 @@ class ImportService {
       status: "review_required",
       fontes_consultadas: enriched.fontes_tentadas,
     });
+
+    return "review_required";
   }
 
   async handleNewProduct({ importItem, ean, item, enriched }) {
@@ -267,7 +316,7 @@ class ImportService {
         status: "not_found",
         fontes_consultadas: enriched.fontes_tentadas,
       });
-      return;
+      return "not_found";
     }
 
     logger.info("Criando novo produto a partir do enriquecimento", {
@@ -312,7 +361,7 @@ class ImportService {
         status: "review_required",
         fontes_consultadas: enriched.fontes_tentadas,
       });
-      return;
+      return "review_required";
     }
 
     logger.info("Novo produto enriquecido criado com sucesso", {
@@ -327,6 +376,8 @@ class ImportService {
       status: "enriched",
       fontes_consultadas: enriched.fontes_tentadas,
     });
+
+    return "enriched";
   }
 
   getImportacao(id) {

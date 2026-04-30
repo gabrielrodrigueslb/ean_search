@@ -1,0 +1,19 @@
+{
+  "watch": [
+    "src",
+    "prisma",
+    ".env",
+    "package.json"
+  ],
+  "ext": "js,json,prisma,env",
+  "ignore": [
+    "node_modules",
+    "prisma/*.db",
+    "prisma/*.legacy-*.db",
+    "README.md",
+    "tmp_test.csv"
+  ],
+  "exec": "node src/server.js",
+  "legacyWatch": true,
+  "delay": "300"
+}

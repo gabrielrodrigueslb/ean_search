@@ -46,12 +46,35 @@ class EnrichmentService {
     return candidates.filter((item) => item.nome_normalizado);
   }
 
+  buildNomeExibicao({ nomeProduto, descricao, ptNome }) {
+    if (ptNome) {
+      return ptNome;
+    }
+
+    if (!nomeProduto && !descricao) {
+      return null;
+    }
+
+    if (!descricao) {
+      return nomeProduto;
+    }
+
+    const normalizedNome = normalizeText(nomeProduto);
+    const normalizedDescricao = normalizeText(descricao);
+
+    if (normalizedDescricao.includes(normalizedNome)) {
+      return descricao;
+    }
+
+    return `${nomeProduto} ${descricao}`.replace(/\s+/g, " ").trim();
+  }
+
   buildSnapshot({ ean, nomeRecebido, ptResult, farmaIndexSearch, farmaIndexDetail }) {
     const nomeProduto =
-      ptResult?.nome ||
       farmaIndexSearch?.produto ||
       farmaIndexDetail?.info?.produto ||
-      nomeRecebido;
+      nomeRecebido ||
+      ptResult?.nome;
 
     if (!nomeProduto) {
       return null;
@@ -75,6 +98,11 @@ class EnrichmentService {
 
     const apresentacao = {
       ean,
+      nome_exibicao: this.buildNomeExibicao({
+        nomeProduto,
+        descricao: detailInfo.apresentacao || farmaIndexSearch?.apresentacao || nomeRecebido || nomeProduto,
+        ptNome: ptResult?.nome,
+      }),
       descricao: detailInfo.apresentacao || farmaIndexSearch?.apresentacao || nomeRecebido || nomeProduto,
       dose: detailInfo.dose_total || null,
       unidade: detailInfo.unidade || null,
@@ -106,21 +134,37 @@ class EnrichmentService {
     let farmaIndexSearch = null;
     let farmaIndexDetail = null;
 
-    try {
-      logger.info("Consultando PT.ProductSearch", { ean });
-      ptResult = await this.ptClient.buscarNomePorEan(ean);
-    } catch (error) {
+    const [ptResponse, farmaSearchResponse] = await Promise.allSettled([
+      (async () => {
+        logger.info("Consultando PT.ProductSearch", { ean });
+        return this.ptClient.buscarNomePorEan(ean);
+      })(),
+      (async () => {
+        logger.info("Consultando FarmaIndex busca", { ean });
+        return this.farmaIndexClient.buscarPorEan(ean);
+      })(),
+    ]);
+
+    if (ptResponse.status === "fulfilled") {
+      ptResult = ptResponse.value;
+    } else {
       logger.warn("Falha ao consultar PT.ProductSearch", {
         ean,
-        error: error.message,
+        error: ptResponse.reason?.message || String(ptResponse.reason),
       });
-      ptResult = null;
     }
 
-    try {
-      logger.info("Consultando FarmaIndex busca", { ean });
-      farmaIndexSearch = await this.farmaIndexClient.buscarPorEan(ean);
-      if (farmaIndexSearch?.slug && farmaIndexSearch?.medicamentoid) {
+    if (farmaSearchResponse.status === "fulfilled") {
+      farmaIndexSearch = farmaSearchResponse.value;
+    } else {
+      logger.warn("Falha ao consultar FarmaIndex", {
+        ean,
+        error: farmaSearchResponse.reason?.message || String(farmaSearchResponse.reason),
+      });
+    }
+
+    if (farmaIndexSearch?.slug && farmaIndexSearch?.medicamentoid) {
+      try {
         logger.info("Consultando FarmaIndex detalhe", {
           ean,
           slug: farmaIndexSearch.slug,
@@ -130,14 +174,13 @@ class EnrichmentService {
           slug: farmaIndexSearch.slug,
           medicamentoid: farmaIndexSearch.medicamentoid,
         });
+      } catch (error) {
+        logger.warn("Falha ao consultar detalhe no FarmaIndex", {
+          ean,
+          error: error.message,
+        });
+        farmaIndexDetail = null;
       }
-    } catch (error) {
-      logger.warn("Falha ao consultar FarmaIndex", {
-        ean,
-        error: error.message,
-      });
-      farmaIndexSearch = null;
-      farmaIndexDetail = null;
     }
 
     const snapshot = this.buildSnapshot({

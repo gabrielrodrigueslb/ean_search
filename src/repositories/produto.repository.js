@@ -81,7 +81,7 @@ class ProdutoRepository {
     });
   }
 
-  async searchProdutos({ nome, nome_normalizado, slug, limit = 20 }) {
+  async searchProdutos({ nome, nome_normalizado, slug, tokens = [], limit = 20 }) {
     const filters = [];
 
     if (slug) {
@@ -106,6 +106,80 @@ class ProdutoRepository {
           contains: nome_normalizado,
         },
       });
+    }
+
+    for (const token of tokens) {
+      filters.push(
+        {
+          nome: {
+            contains: token,
+          },
+        },
+        {
+          nome_normalizado: {
+            contains: token,
+          },
+        },
+        {
+          slug: {
+            contains: token,
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              nome_exibicao: {
+                contains: token,
+              },
+            },
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              descricao: {
+                contains: token,
+              },
+            },
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              forma_farmaceutica: {
+                contains: token,
+              },
+            },
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              quantidade: {
+                contains: token,
+              },
+            },
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              dose: {
+                contains: token,
+              },
+            },
+          },
+        },
+        {
+          apresentacoes: {
+            some: {
+              unidade: {
+                contains: token,
+              },
+            },
+          },
+        },
+      );
     }
 
     return prisma.produto.findMany({

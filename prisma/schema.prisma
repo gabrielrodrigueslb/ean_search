@@ -65,6 +65,7 @@ model Apresentacao {
   id                 Int        @id @default(autoincrement())
   produto_id         Int
   ean                String     @unique
+  nome_exibicao      String?
   descricao          String?
   dose               String?
   unidade            String?

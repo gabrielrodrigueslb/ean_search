@@ -7,6 +7,11 @@ function resolveSqlitePath(databaseUrl) {
   return databaseUrl.replace(/^file:/, "");
 }
 
+function hasColumn(db, tableName, columnName) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  return columns.some((column) => column.name === columnName);
+}
+
 function hasLegacyJsonColumns(db) {
   const tables = [
     "itens_importacao",
@@ -165,6 +170,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       produto_id INTEGER NOT NULL,
       ean TEXT NOT NULL UNIQUE,
+      nome_exibicao TEXT,
       descricao TEXT,
       dose TEXT,
       unidade TEXT,
@@ -276,6 +282,10 @@ function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_historico_alteracoes_revisao_id ON historico_alteracoes(solicitacao_revisao_id);
   `);
+
+  if (!hasColumn(db, "apresentacoes", "nome_exibicao")) {
+    db.exec(`ALTER TABLE apresentacoes ADD COLUMN nome_exibicao TEXT;`);
+  }
 
   db.close();
 }
