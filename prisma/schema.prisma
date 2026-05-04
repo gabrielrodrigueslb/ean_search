@@ -24,40 +24,24 @@ enum StatusItemImportacao {
   pending
   processing
   enriched
-  review_required
-  not_found
+  review
   failed
 }
 
-enum StatusRevisao {
-  pending
-  approved
-  rejected
-}
-
-enum StatusEanNaoEncontrado {
-  pending_review
-  resolved
-  discarded
-}
-
 model Produto {
-  id               Int                 @id @default(autoincrement())
+  id               Int           @id @default(autoincrement())
   nome             String
   nome_normalizado String
-  slug             String?
-  tipo             TipoProduto         @default(outro)
-  laboratorio      String?
-  laboratorio_slug String?
-  classe           String?
-  classe_slug      String?
+  tipo             TipoProduto   @default(outro)
   categoria        String?
+  laboratorio      String?
   origem_nome      String
-  created_at       DateTime            @default(now())
-  updated_at       DateTime            @updatedAt
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
   apresentacoes    Apresentacao[]
   produto_farmacos ProdutoFarmaco[]
 
+  @@index([nome_normalizado, tipo])
   @@map("produtos")
 }
 
@@ -87,13 +71,12 @@ model Apresentacao {
 model Farmaco {
   id               Int              @id @default(autoincrement())
   nome             String
-  nome_normalizado String
+  nome_normalizado String           @unique
   slug             String?
   created_at       DateTime         @default(now())
   updated_at       DateTime         @updatedAt
   produto_farmacos ProdutoFarmaco[]
 
-  @@unique([nome_normalizado])
   @@map("farmacos")
 }
 
@@ -112,86 +95,58 @@ model ProdutoFarmaco {
 }
 
 model Importacao {
-  id                Int                  @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   fonte             String
-  status            StatusImportacao     @default(pending)
-  total_itens       Int                  @default(0)
-  itens_processados Int                  @default(0)
-  itens_sucesso     Int                  @default(0)
-  itens_falha       Int                  @default(0)
-  itens_revisao     Int                  @default(0)
-  created_at        DateTime             @default(now())
+  status            StatusImportacao @default(pending)
+  total_itens       Int             @default(0)
+  itens_processados Int             @default(0)
+  itens_sucesso     Int             @default(0)
+  itens_falha       Int             @default(0)
+  itens_revisao     Int             @default(0)
+  created_at        DateTime        @default(now())
   finished_at       DateTime?
   itens             ItemImportacao[]
+  aprovacoes        ProdutoAprovacao[]
 
   @@map("importacoes")
 }
 
 model ItemImportacao {
-  id                Int                 @id @default(autoincrement())
-  importacao_id     Int
-  ean               String
-  nome_recebido     String?
-  dados_brutos      String
-  status            StatusItemImportacao @default(pending)
-  mensagem_erro     String?
+  id                 Int                 @id @default(autoincrement())
+  importacao_id      Int
+  ean                String
+  nome_recebido      String?
+  dados_brutos       String
+  status             StatusItemImportacao @default(pending)
+  mensagem_erro      String?
   fontes_consultadas String?
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
-  importacao        Importacao          @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  importacao         Importacao          @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  aprovacoes         ProdutoAprovacao[]
 
   @@index([importacao_id])
   @@index([ean])
   @@map("itens_importacao")
 }
 
-model SolicitacaoRevisao {
-  id               Int           @id @default(autoincrement())
-  entity_type      String
-  entity_id        Int?
-  ean              String?
-  dados_atuais     String
-  dados_sugeridos  String
-  diff_campos      String
+model ProdutoAprovacao {
+  id               Int            @id @default(autoincrement())
+  importacao_id    Int
+  item_importacao_id Int?
+  ean              String
+  nome_sugerido    String?
   motivo           String
-  resumo_ia        String?
-  confidence_score Float?
-  fonte            String
-  status           StatusRevisao @default(pending)
-  reviewed_by      String?
-  reviewed_at      DateTime?
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
+  fonte_origem     String?
+  dados_brutos     String
+  status           String         @default("pending")
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+  importacao       Importacao     @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  item_importacao  ItemImportacao? @relation(fields: [item_importacao_id], references: [id], onDelete: SetNull)
 
-  @@index([status])
+  @@index([importacao_id])
+  @@index([item_importacao_id])
   @@index([ean])
-  @@map("solicitacoes_revisao")
-}
-
-model EanNaoEncontrado {
-  id                  Int                    @id @default(autoincrement())
-  ean                 String                 @unique
-  nome_recebido       String?
-  dados_brutos        String
-  fontes_tentadas     String?
-  motivo_nao_encontrado String
-  status              StatusEanNaoEncontrado @default(pending_review)
-  created_at          DateTime               @default(now())
-  updated_at          DateTime               @updatedAt
-
-  @@map("eans_nao_encontrados")
-}
-
-model HistoricoAlteracao {
-  id                     Int      @id @default(autoincrement())
-  solicitacao_revisao_id Int
-  entity_type            String
-  entity_id              Int?
-  antes                  String
-  depois                 String
-  aplicado_por           String?
-  created_at             DateTime @default(now())
-
-  @@index([solicitacao_revisao_id])
-  @@map("historico_alteracoes")
+  @@map("produtos_aprovacao")
 }

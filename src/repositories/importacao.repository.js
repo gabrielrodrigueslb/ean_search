@@ -1,22 +1,37 @@
 const prisma = require("../lib/prisma");
 const { stringifyJson, parseJson } = require("../utils/jsonField");
 
+function normalizeImportacaoId(id) {
+  const parsedId = Number.parseInt(id, 10);
+  return Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
+}
+
 class ImportacaoRepository {
   createImportacao(data) {
     return prisma.importacao.create({ data });
   }
 
   updateImportacao(id, data) {
+    const importacaoId = normalizeImportacaoId(id);
+    if (importacaoId === null) {
+      return Promise.resolve(null);
+    }
+
     return prisma.importacao.update({
-      where: { id },
+      where: { id: importacaoId },
       data,
     });
   }
 
   findImportacaoById(id) {
+    const importacaoId = normalizeImportacaoId(id);
+    if (importacaoId === null) {
+      return Promise.resolve(null);
+    }
+
     return prisma.importacao.findUnique({
-      where: { id },
-      include: { itens: true },
+      where: { id: importacaoId },
+      include: { itens: true, aprovacoes: true },
     }).then((result) => {
       if (!result) {
         return null;
@@ -29,11 +44,20 @@ class ImportacaoRepository {
           dados_brutos: parseJson(item.dados_brutos),
           fontes_consultadas: parseJson(item.fontes_consultadas),
         })),
+        aprovacoes: result.aprovacoes.map((aprovacao) => ({
+          ...aprovacao,
+          dados_brutos: parseJson(aprovacao.dados_brutos),
+        })),
       };
     });
   }
 
   async incrementImportacaoCounters(id, counters) {
+    const importacaoId = normalizeImportacaoId(id);
+    if (importacaoId === null) {
+      return null;
+    }
+
     const data = {};
 
     if (counters.itens_processados) {
@@ -53,11 +77,11 @@ class ImportacaoRepository {
     }
 
     if (!Object.keys(data).length) {
-      return prisma.importacao.findUnique({ where: { id } });
+      return prisma.importacao.findUnique({ where: { id: importacaoId } });
     }
 
     return prisma.importacao.update({
-      where: { id },
+      where: { id: importacaoId },
       data,
     });
   }
@@ -89,6 +113,18 @@ class ImportacaoRepository {
       ...item,
       dados_brutos: parseJson(item.dados_brutos),
       fontes_consultadas: parseJson(item.fontes_consultadas),
+    }));
+  }
+
+  createProdutoAprovacao(data) {
+    return prisma.produtoAprovacao.create({
+      data: {
+        ...data,
+        dados_brutos: stringifyJson(data.dados_brutos),
+      },
+    }).then((aprovacao) => ({
+      ...aprovacao,
+      dados_brutos: parseJson(aprovacao.dados_brutos),
     }));
   }
 }

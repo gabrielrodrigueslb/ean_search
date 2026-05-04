@@ -1,7 +1,5 @@
 const express = require("express");
 const importRoutes = require("./routes/import.routes");
-const productRoutes = require("./routes/products.routes");
-const reviewRoutes = require("./routes/reviews.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const { requestLogger } = require("./middleware/requestLogger");
 
@@ -17,8 +15,6 @@ function createApp() {
   });
 
   app.use("/imports", importRoutes);
-  app.use("/products", productRoutes);
-  app.use("/reviews", reviewRoutes);
 
   app.use(errorHandler);
 

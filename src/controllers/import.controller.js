@@ -2,6 +2,17 @@ const { ImportService } = require("../services/import.service");
 const { CsvImportAdapter } = require("../adapters/csv-import.adapter");
 const { logger } = require("../utils/logger");
 
+function serializeImportacaoResponse(importacao) {
+  if (!importacao) {
+    return importacao;
+  }
+
+  return {
+    ...importacao,
+    importacao_id: importacao.id,
+  };
+}
+
 class ImportController {
   constructor() {
     this.importService = new ImportService();
@@ -14,6 +25,10 @@ class ImportController {
 
     const adapter = new CsvImportAdapter(req.file.buffer);
     const items = await adapter.parse();
+    if (!items.length) {
+      return res.status(400).json({ error: "CSV vazio ou sem linhas validas.", details: null });
+    }
+
     const result = await this.importService.enqueueItems({
       fonte: "csv",
       items,
@@ -26,11 +41,15 @@ class ImportController {
       status: result.status,
     });
 
-    return res.status(202).json(result);
+    return res.status(202).json(serializeImportacaoResponse(result));
   };
 
   importJson = async (req, res) => {
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!items.length) {
+      return res.status(400).json({ error: "Nenhum item enviado para importacao JSON.", details: null });
+    }
+
     const normalizedItems = items.map((item) => ({
       ean: item.ean,
       nome_recebido: item.nome_recebido || item.nome || null,
@@ -49,16 +68,97 @@ class ImportController {
       status: result.status,
     });
 
-    return res.status(202).json(result);
+    return res.status(202).json(serializeImportacaoResponse(result));
+  };
+
+  importTrier = async (req, res) => {
+    const {
+      baseUrl,
+      bearerToken,
+      codigo,
+      ean,
+      nomeProduto,
+      primeiroRegistro,
+      quantidadeRegistros,
+      ativo,
+      integracaoEcommerce,
+      processaCustoMedio,
+    } = req.body || {};
+
+    const result = await this.importService.enqueueTrierImport({
+      baseUrl,
+      bearerToken,
+      filters: {
+        codigo,
+        codigoBarras: ean,
+        nomeProduto,
+        primeiroRegistro,
+        quantidadeRegistros,
+        ativo,
+        integracaoEcommerce,
+        processaCustoMedio,
+      },
+    });
+
+    logger.info("Importacao Trier aceita para processamento", {
+      importacao_id: result.id,
+      status: result.status,
+      codigo,
+      ean,
+      nomeProduto,
+    });
+
+    return res.status(202).json(serializeImportacaoResponse(result));
+  };
+
+  importVetor = async (req, res) => {
+    const {
+      baseUrl,
+      apiKey,
+      filter,
+      select,
+      orderby,
+      top,
+      skip,
+      count,
+    } = req.body || {};
+
+    const result = await this.importService.enqueueVetorImport({
+      baseUrl,
+      apiKey,
+      filters: {
+        filter,
+        select,
+        orderby,
+        top,
+        skip,
+        count,
+      },
+    });
+
+    logger.info("Importacao Vetor aceita para processamento", {
+      importacao_id: result.id,
+      status: result.status,
+      filter: filter || null,
+      top: top || null,
+      skip: skip || null,
+    });
+
+    return res.status(202).json(serializeImportacaoResponse(result));
   };
 
   getImportacao = async (req, res) => {
-    const result = await this.importService.getImportacao(Number(req.params.id));
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Id de importacao invalido.", details: null });
+    }
+
+    const result = await this.importService.getImportacao(id);
     if (!result) {
       return res.status(404).json({ error: "Importacao nao encontrada." });
     }
 
-    return res.json(result);
+    return res.json(serializeImportacaoResponse(result));
   };
 }
 
