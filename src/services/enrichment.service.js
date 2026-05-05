@@ -1,5 +1,6 @@
 const { FarmaIndexClient } = require("../integrations/farmaindex.client");
 const { BarcodeLookupClient } = require("../integrations/barcode-lookup.client");
+const { BrowserNameLookupClient } = require("../integrations/browser-name-lookup.client");
 const { PtProductSearchClient } = require("../integrations/pt-product-search.client");
 const { classifyProductType } = require("../utils/classifyProductType");
 const { normalizeText } = require("../utils/normalizeText");
@@ -19,32 +20,48 @@ function slugify(value) {
 }
 
 function isTrustedNameSource(source) {
-  return source === "pt_product_search" || source === "farmaindex" || source === "barcode_lookup";
+  return source === "pt_product_search"
+    || source === "farmaindex"
+    || source === "barcode_lookup"
+    || source === "pt_product_search_browser"
+    || source === "barcode_lookup_browser";
 }
 
 class EnrichmentService {
   constructor() {
     this.farmaIndexClient = new FarmaIndexClient();
     this.barcodeLookupClient = new BarcodeLookupClient();
+    this.browserNameLookupClient = new BrowserNameLookupClient();
     this.ptProductSearchClient = new PtProductSearchClient();
   }
 
-  async enrichImportedItem(item) {
-    const ean = String(item.ean || "");
-    const ptLookup = await this.tryPtLookup(ean);
-    const ptResult = ptLookup.result;
-    const searchLookup = await this.tryFarmaLookup(ean);
-    const searchResult = searchLookup.result;
-    const barcodeLookup = !searchResult && !ptResult
-      ? await this.tryBarcodeLookup(ean)
-      : null;
-    const barcodeLookupResult = barcodeLookup?.result || null;
+  createSession() {
+    return {
+      lookupCache: new Map(),
+    };
+  }
 
-    if (!searchResult && !ptResult && !barcodeLookupResult) {
+  async enrichImportedItem(item, session = null) {
+    const ean = String(item.ean || "");
+    const { resolution, cacheHit } = await this.getResolutionForEan(ean, session);
+    const {
+      ptLookup,
+      ptResult,
+      searchLookup,
+      searchResult,
+      barcodeLookup,
+      barcodeLookupResult,
+      browserLookup,
+      browserLookupResult,
+      detail,
+    } = resolution;
+
+    if (!searchResult && !ptResult && !barcodeLookupResult && !browserLookupResult) {
       const approvalReason = this.buildApprovalReason({
         ptLookup,
         searchLookup,
         barcodeLookup,
+        browserLookup,
       });
 
       return {
@@ -67,19 +84,23 @@ class EnrichmentService {
           farmaindex_detalhe: false,
           barcode_lookup: Boolean(barcodeLookupResult),
           barcode_lookup_error: barcodeLookup?.error || null,
+          browser_lookup: Boolean(browserLookupResult),
+          browser_lookup_error: browserLookup?.error || null,
+          browser_lookup_trail: browserLookup?.trail || null,
+          cache_hit: cacheHit,
           encontrado: false,
         },
       };
     }
 
-    const detail = searchResult
-      ? await this.farmaIndexClient.buscarDetalhe({
-        slug: searchResult.slug,
-        medicamentoid: searchResult.medicamentoid,
-      })
-      : null;
-
-    const snapshot = this.buildSnapshot({ item, ptResult, searchResult, detail, barcodeLookupResult });
+    const snapshot = this.buildSnapshot({
+      item,
+      ptResult,
+      searchResult,
+      detail,
+      barcodeLookupResult,
+      browserLookupResult,
+    });
 
     return {
       item: {
@@ -103,9 +124,85 @@ class EnrichmentService {
         farmaindex_detalhe: Boolean(detail),
         barcode_lookup: Boolean(barcodeLookupResult),
         barcode_lookup_error: barcodeLookup?.error || null,
+        browser_lookup: Boolean(browserLookupResult),
+        browser_lookup_error: browserLookup?.error || null,
+        browser_lookup_trail: browserLookup?.trail || null,
+        cache_hit: cacheHit,
         encontrado: true,
       },
     };
+  }
+
+  async getResolutionForEan(ean, session = null) {
+    const cache = session?.lookupCache;
+    if (!cache) {
+      return {
+        resolution: await this.resolveExternalSources(ean),
+        cacheHit: false,
+      };
+    }
+
+    if (cache.has(ean)) {
+      return {
+        resolution: this.cloneValue(await cache.get(ean)),
+        cacheHit: true,
+      };
+    }
+
+    const pendingResolution = this.resolveExternalSources(ean);
+    cache.set(ean, pendingResolution);
+
+    try {
+      const resolution = await pendingResolution;
+      return {
+        resolution: this.cloneValue(resolution),
+        cacheHit: false,
+      };
+    } catch (error) {
+      cache.delete(ean);
+      throw error;
+    }
+  }
+
+  async resolveExternalSources(ean) {
+    const ptLookup = await this.tryPtLookup(ean);
+    const ptResult = ptLookup.result;
+    const searchLookup = await this.tryFarmaLookup(ean);
+    const searchResult = searchLookup.result;
+    const barcodeLookup = !searchResult && !ptResult
+      ? await this.tryBarcodeLookup(ean)
+      : null;
+    const barcodeLookupResult = barcodeLookup?.result || null;
+    const browserLookup = !searchResult && !ptResult && !barcodeLookupResult
+      ? await this.tryBrowserLookup(ean)
+      : null;
+    const browserLookupResult = browserLookup?.result || null;
+    const detail = searchResult
+      ? await this.farmaIndexClient.buscarDetalhe({
+        slug: searchResult.slug,
+        medicamentoid: searchResult.medicamentoid,
+      })
+      : null;
+
+    return {
+      ptLookup,
+      ptResult,
+      searchLookup,
+      searchResult,
+      barcodeLookup,
+      barcodeLookupResult,
+      browserLookup,
+      browserLookupResult,
+      detail,
+    };
+  }
+
+  cloneValue(value) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    return JSON.parse(JSON.stringify(value));
   }
 
   async tryPtLookup(ean) {
@@ -150,7 +247,24 @@ class EnrichmentService {
     }
   }
 
-  buildApprovalReason({ ptLookup, searchLookup, barcodeLookup }) {
+  async tryBrowserLookup(ean) {
+    try {
+      const outcome = await this.browserNameLookupClient.buscarNomePorEan(ean);
+      return {
+        result: outcome.result,
+        trail: outcome.trail || [],
+        error: null,
+      };
+    } catch (error) {
+      return {
+        result: null,
+        trail: [],
+        error: error.message,
+      };
+    }
+  }
+
+  buildApprovalReason({ ptLookup, searchLookup, barcodeLookup, browserLookup }) {
     const reasons = [];
 
     if (ptLookup?.result) {
@@ -177,10 +291,23 @@ class EnrichmentService {
       reasons.push("BarcodeLookup sem resultado.");
     }
 
+    if (browserLookup?.result) {
+      reasons.push(`Browser fallback encontrou resultado em ${browserLookup.result.origem}.`);
+    } else if (browserLookup?.error) {
+      reasons.push(`Browser fallback falhou: ${browserLookup.error}`);
+    } else if (Array.isArray(browserLookup?.trail) && browserLookup.trail.length) {
+      const trailSummary = browserLookup.trail
+        .map((entry) => `${entry.source}: ${entry.nome ? "ok" : entry.error || "sem resultado"}`)
+        .join("; ");
+      reasons.push(`Browser fallback sem resultado. ${trailSummary}`);
+    } else {
+      reasons.push("Browser fallback nao executado.");
+    }
+
     return reasons.join(" ");
   }
 
-  buildSnapshot({ item, ptResult, searchResult, detail, barcodeLookupResult }) {
+  buildSnapshot({ item, ptResult, searchResult, detail, barcodeLookupResult, browserLookupResult }) {
     const info = detail?.info || {};
     const raw = item.dados_brutos || item;
     const tipoFallback = this.resolveTipo({ raw, ptResult, searchResult, detail });
@@ -190,6 +317,7 @@ class EnrichmentService {
       searchResult?.produto,
       ptResult?.nome,
       barcodeLookupResult?.nome,
+      browserLookupResult?.nome,
     );
 
     const nomeExibicao = pickFirstString(
@@ -197,6 +325,7 @@ class EnrichmentService {
       [info.produto, info.apresentacao].filter(Boolean).join(" ").trim(),
       [searchResult?.produto, searchResult?.apresentacao].filter(Boolean).join(" ").trim(),
       barcodeLookupResult?.nome,
+      browserLookupResult?.nome,
       produtoNome,
     );
 
@@ -221,8 +350,20 @@ class EnrichmentService {
         laboratorio: pickFirstString(info.laboratorio, searchResult?.laboratorio, raw.laboratorio),
         categoria: pickFirstString(info.classe, info.categoria, raw.categoria),
         tipo: tipoFallback,
-        origem_nome: ptResult ? "pt_product_search" : searchResult ? "farmaindex" : barcodeLookupResult ? "barcode_lookup" : null,
-        origem_dados: searchResult ? "farmaindex" : ptResult ? "pt_product_search" : barcodeLookupResult ? "barcode_lookup" : raw.origem_dados,
+        origem_nome: ptResult
+          ? "pt_product_search"
+          : searchResult
+            ? "farmaindex"
+            : barcodeLookupResult
+              ? "barcode_lookup"
+              : browserLookupResult?.origem || null,
+        origem_dados: searchResult
+          ? "farmaindex"
+          : ptResult
+            ? "pt_product_search"
+            : barcodeLookupResult
+              ? "barcode_lookup"
+              : browserLookupResult?.origem || raw.origem_dados,
         farmacos,
       },
     };

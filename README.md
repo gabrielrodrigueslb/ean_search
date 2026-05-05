@@ -75,6 +75,7 @@ O schema foi reduzido para seis entidades:
 - um `produto` pode ter varias `apresentacoes`
 - se o `FarmaIndex` encontrar o item, os metadados estruturados passam a prevalecer
 - o nome do catalogo so pode vir de `PT.ProductSearch` ou `FarmaIndex`
+- quando necessario, o sistema pode usar fallback em browser real com `Playwright`, tentando `PT.ProductSearch` primeiro e `BarcodeLookup` depois
 - nomes vindos da Trier ficam apenas como referencia operacional e nunca entram no cadastro final
 - se o `EAN` ja existir, o cadastro e atualizado
 - se o `EAN` nao existir, o sistema tenta anexar ao produto pelo `nome_normalizado + tipo`
@@ -88,6 +89,8 @@ Durante a importacao, cada item com EAN valido tenta consultar:
 1. `PT.ProductSearch`
 2. `https://farmaindex.com/busca?q=<ean>`
 3. a pagina de detalhe do medicamento retornado
+4. `BarcodeLookup` por HTTP quando PT/FarmaIndex nao resolverem
+5. fallback com `Playwright`, tentando `PT.ProductSearch` no browser e depois `BarcodeLookup`
 
 Regra atual:
 
@@ -103,6 +106,12 @@ Se nenhum dos dois resolver o nome:
 - o item **nao** cria produto no catalogo
 - o item vai para a tabela `produtos_aprovacao`
 - o nome bruto vindo da Trier fica so como sugestao para revisao humana
+
+Se o fallback de browser estiver disponivel:
+
+- ele tenta `PT.ProductSearch` em browser real
+- se o PT ainda falhar, tenta `BarcodeLookup` em browser real
+- se mesmo assim nao resolver, o item segue para aprovacao
 
 Quando o `FarmaIndex` encontra, o pipeline passa a usar no upsert:
 
@@ -130,6 +139,8 @@ PORT=3000
 REQUEST_TIMEOUT_MS=10000
 IMPORT_QUEUE_CONCURRENCY=1
 PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE=45
+BROWSER_FALLBACK_TIMEOUT_MS=45000
+BROWSER_FALLBACK_HEADLESS=true
 ```
 
 ### 2. gerar o client do Prisma

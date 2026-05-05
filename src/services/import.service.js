@@ -130,6 +130,8 @@ class ImportService {
   }
 
   async processItems({ importacaoId, fonte, items }) {
+    const enrichmentSession = this.enrichmentService.createSession();
+
     await this.importacaoRepository.updateImportacao(importacaoId, {
       status: "processing",
       total_itens: items.length,
@@ -142,7 +144,7 @@ class ImportService {
     });
 
     try {
-      await this.processBatchItems(importacaoId, items);
+      await this.processBatchItems(importacaoId, items, enrichmentSession);
 
       return this.finalizeImportacao(importacaoId, items.length);
     } catch (error) {
@@ -161,7 +163,7 @@ class ImportService {
     }
   }
 
-  async processBatchItems(importacaoId, items) {
+  async processBatchItems(importacaoId, items, enrichmentSession = null) {
     for (const [index, item] of items.entries()) {
       logger.info("Processando item", {
         importacao_id: importacaoId,
@@ -169,12 +171,13 @@ class ImportService {
         ean_recebido: item.ean,
       });
 
-      const status = await this.processSingleItem(importacaoId, item);
+      const status = await this.processSingleItem(importacaoId, item, enrichmentSession);
       await this.incrementImportCounters(importacaoId, status);
     }
   }
 
   async processTrierImport({ importacaoId, baseUrl, bearerToken, filters }) {
+    const enrichmentSession = this.enrichmentService.createSession();
     const pageSize = this.trierService.normalizePageSize(filters.quantidadeRegistros, 999);
     let primeiroRegistro = Number.parseInt(filters.primeiroRegistro, 10) || 0;
     let totalItens = 0;
@@ -232,7 +235,7 @@ class ImportService {
           break;
         }
 
-        await this.processBatchItems(importacaoId, batch);
+        await this.processBatchItems(importacaoId, batch, enrichmentSession);
 
         if (batch.length < pageSize) {
           break;
@@ -258,6 +261,7 @@ class ImportService {
   }
 
   async processVetorImport({ importacaoId, baseUrl, apiKey, filters }) {
+    const enrichmentSession = this.enrichmentService.createSession();
     const pageSize = this.vetorService.normalizePageSize(filters.top, 500);
     let skip = this.vetorService.normalizeSkip(filters.skip);
     let totalItens = 0;
@@ -315,7 +319,7 @@ class ImportService {
           break;
         }
 
-        await this.processBatchItems(importacaoId, batch);
+        await this.processBatchItems(importacaoId, batch, enrichmentSession);
 
         if (batch.length < pageSize) {
           break;
@@ -340,7 +344,7 @@ class ImportService {
     }
   }
 
-  async processSingleItem(importacaoId, item) {
+  async processSingleItem(importacaoId, item, enrichmentSession = null) {
     const importItem = await this.importacaoRepository.createItem({
       importacao_id: importacaoId,
       ean: String(item.ean || ""),
@@ -369,7 +373,7 @@ class ImportService {
       const enriched = await this.enrichmentService.enrichImportedItem({
         ...item,
         ean: validation.ean,
-      });
+      }, enrichmentSession);
 
       logger.info("Enriquecimento concluido", {
         importacao_id: importacaoId,

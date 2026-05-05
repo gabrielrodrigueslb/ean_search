@@ -14,7 +14,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex ou BarcodeLookup.");
+    })).toThrow("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex, BarcodeLookup ou browser fallback.");
   });
 
   test("aceita nome validado pelo PT.ProductSearch", () => {
@@ -51,5 +51,23 @@ describe("ProductService.buildSnapshot", () => {
 
     expect(snapshot.produto.nome).toBe("Agua Inglesa Frasco Com 500ml");
     expect(snapshot.apresentacao.nome_exibicao).toBe("Agua Inglesa Frasco Com 500ml");
+  });
+
+  test("aceita nome validado pelo browser no PT.ProductSearch", () => {
+    const service = new ProductService();
+    const snapshot = service.buildSnapshot({
+      ean: "7891158105395",
+      nome_recebido: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
+      dados_brutos: {
+        origem_nome: "pt_product_search_browser",
+        nome: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
+        nome_produto: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
+        nome_exibicao: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
+        categoria: "Suplementos",
+      },
+    });
+
+    expect(snapshot.produto.nome).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
+    expect(snapshot.apresentacao.nome_exibicao).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
   });
 });

@@ -13,7 +13,11 @@ function pickFirstString(...values) {
 }
 
 function isTrustedNameSource(source) {
-  return source === "pt_product_search" || source === "farmaindex" || source === "barcode_lookup";
+  return source === "pt_product_search"
+    || source === "farmaindex"
+    || source === "barcode_lookup"
+    || source === "pt_product_search_browser"
+    || source === "barcode_lookup_browser";
 }
 
 class ProductService {
@@ -32,7 +36,7 @@ class ProductService {
     );
 
     if (!nomeProduto) {
-      const error = new Error("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex ou BarcodeLookup.");
+      const error = new Error("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex, BarcodeLookup ou browser fallback.");
       error.status = 400;
       throw error;
     }
