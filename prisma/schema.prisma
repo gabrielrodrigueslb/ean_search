@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum TipoProduto {
-  medicamento
-  perfumaria
-  outro
-}
-
 enum StatusImportacao {
   pending
   processing
@@ -28,82 +22,16 @@ enum StatusItemImportacao {
   failed
 }
 
-model Produto {
-  id               Int           @id @default(autoincrement())
-  nome             String
-  nome_normalizado String
-  tipo             TipoProduto   @default(outro)
-  categoria        String?
-  laboratorio      String?
-  origem_nome      String
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
-  apresentacoes    Apresentacao[]
-  produto_farmacos ProdutoFarmaco[]
-
-  @@index([nome_normalizado, tipo])
-  @@map("produtos")
-}
-
-model Apresentacao {
-  id                 Int        @id @default(autoincrement())
-  produto_id         Int
-  ean                String     @unique
-  nome_exibicao      String?
-  descricao          String?
-  dose               String?
-  unidade            String?
-  forma_farmaceutica String?
-  via_administracao  String?
-  quantidade         String?
-  volume             String?
-  registro_ms        String?
-  tarja              String?
-  origem_dados       String
-  created_at         DateTime   @default(now())
-  updated_at         DateTime   @updatedAt
-  produto            Produto    @relation(fields: [produto_id], references: [id], onDelete: Cascade)
-
-  @@index([produto_id])
-  @@map("apresentacoes")
-}
-
-model Farmaco {
-  id               Int              @id @default(autoincrement())
-  nome             String
-  nome_normalizado String           @unique
-  slug             String?
-  created_at       DateTime         @default(now())
-  updated_at       DateTime         @updatedAt
-  produto_farmacos ProdutoFarmaco[]
-
-  @@map("farmacos")
-}
-
-model ProdutoFarmaco {
-  id         Int      @id @default(autoincrement())
-  produto_id Int
-  farmaco_id Int
-  created_at DateTime @default(now())
-  produto    Produto  @relation(fields: [produto_id], references: [id], onDelete: Cascade)
-  farmaco    Farmaco  @relation(fields: [farmaco_id], references: [id], onDelete: Cascade)
-
-  @@unique([produto_id, farmaco_id])
-  @@index([produto_id])
-  @@index([farmaco_id])
-  @@map("produto_farmacos")
-}
-
 model Importacao {
-  id                Int             @id @default(autoincrement())
+  id                Int               @id @default(autoincrement())
   fonte             String
-  status            StatusImportacao @default(pending)
-  total_itens       Int             @default(0)
-  itens_processados Int             @default(0)
-  itens_sucesso     Int             @default(0)
-  itens_falha       Int             @default(0)
-  itens_revisao     Int             @default(0)
-  created_at        DateTime        @default(now())
+  status            StatusImportacao  @default(pending)
+  total_itens       Int               @default(0)
+  itens_processados Int               @default(0)
+  itens_sucesso     Int               @default(0)
+  itens_falha       Int               @default(0)
+  itens_revisao     Int               @default(0)
+  created_at        DateTime          @default(now())
   finished_at       DateTime?
   itens             ItemImportacao[]
   aprovacoes        ProdutoAprovacao[]
@@ -112,7 +40,7 @@ model Importacao {
 }
 
 model ItemImportacao {
-  id                 Int                 @id @default(autoincrement())
+  id                 Int                  @id @default(autoincrement())
   importacao_id      Int
   ean                String
   nome_recebido      String?
@@ -120,9 +48,9 @@ model ItemImportacao {
   status             StatusItemImportacao @default(pending)
   mensagem_erro      String?
   fontes_consultadas String?
-  created_at         DateTime            @default(now())
-  updated_at         DateTime            @updatedAt
-  importacao         Importacao          @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  importacao         Importacao           @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
   aprovacoes         ProdutoAprovacao[]
 
   @@index([importacao_id])
@@ -131,19 +59,19 @@ model ItemImportacao {
 }
 
 model ProdutoAprovacao {
-  id               Int            @id @default(autoincrement())
-  importacao_id    Int
+  id                Int            @id @default(autoincrement())
+  importacao_id     Int
   item_importacao_id Int?
-  ean              String
-  nome_sugerido    String?
-  motivo           String
-  fonte_origem     String?
-  dados_brutos     String
-  status           String         @default("pending")
-  created_at       DateTime       @default(now())
-  updated_at       DateTime       @updatedAt
-  importacao       Importacao     @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
-  item_importacao  ItemImportacao? @relation(fields: [item_importacao_id], references: [id], onDelete: SetNull)
+  ean               String
+  nome_sugerido     String?
+  motivo            String
+  fonte_origem      String?
+  dados_brutos      String
+  status            String         @default("pending")
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+  importacao        Importacao     @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  item_importacao   ItemImportacao? @relation(fields: [item_importacao_id], references: [id], onDelete: SetNull)
 
   @@index([importacao_id])
   @@index([item_importacao_id])

@@ -7,11 +7,6 @@ function resolveSqlitePath(databaseUrl) {
   return databaseUrl.replace(/^file:/, "");
 }
 
-function hasColumn(db, tableName, columnName) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
-  return columns.some((column) => column.name === columnName);
-}
-
 function initDatabase() {
   const filePath = resolveSqlitePath(env.databaseUrl);
   const directory = path.dirname(filePath);
@@ -24,61 +19,6 @@ function initDatabase() {
   db.pragma("foreign_keys = ON");
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS produtos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT NOT NULL,
-      nome_normalizado TEXT NOT NULL,
-      tipo TEXT NOT NULL DEFAULT 'outro',
-      categoria TEXT,
-      laboratorio TEXT,
-      origem_nome TEXT NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS idx_produtos_nome_tipo ON produtos(nome_normalizado, tipo);
-
-    CREATE TABLE IF NOT EXISTS apresentacoes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      produto_id INTEGER NOT NULL,
-      ean TEXT NOT NULL UNIQUE,
-      nome_exibicao TEXT,
-      descricao TEXT,
-      dose TEXT,
-      unidade TEXT,
-      forma_farmaceutica TEXT,
-      via_administracao TEXT,
-      quantidade TEXT,
-      volume TEXT,
-      registro_ms TEXT,
-      tarja TEXT,
-      origem_dados TEXT NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE
-    );
-    CREATE INDEX IF NOT EXISTS idx_apresentacoes_produto_id ON apresentacoes(produto_id);
-
-    CREATE TABLE IF NOT EXISTS farmacos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT NOT NULL,
-      nome_normalizado TEXT NOT NULL UNIQUE,
-      slug TEXT,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS produto_farmacos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      produto_id INTEGER NOT NULL,
-      farmaco_id INTEGER NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE,
-      FOREIGN KEY (farmaco_id) REFERENCES farmacos(id) ON DELETE CASCADE
-    );
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_produto_farmacos_unique ON produto_farmacos(produto_id, farmaco_id);
-    CREATE INDEX IF NOT EXISTS idx_produto_farmacos_produto_id ON produto_farmacos(produto_id);
-    CREATE INDEX IF NOT EXISTS idx_produto_farmacos_farmaco_id ON produto_farmacos(farmaco_id);
-
     CREATE TABLE IF NOT EXISTS importacoes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fonte TEXT NOT NULL,
@@ -127,10 +67,6 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_produtos_aprovacao_item_importacao_id ON produtos_aprovacao(item_importacao_id);
     CREATE INDEX IF NOT EXISTS idx_produtos_aprovacao_ean ON produtos_aprovacao(ean);
   `);
-
-  if (!hasColumn(db, "apresentacoes", "via_administracao")) {
-    db.exec("ALTER TABLE apresentacoes ADD COLUMN via_administracao TEXT;");
-  }
 
   db.close();
 }

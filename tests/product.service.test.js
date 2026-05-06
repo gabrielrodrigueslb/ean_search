@@ -1,4 +1,4 @@
-const { ProductService } = require("../src/services/product.service");
+const { ProductService, EMBEDDING_DIMENSIONS } = require("../src/services/product.service");
 
 describe("ProductService.buildSnapshot", () => {
   test("rejeita nome vindo apenas da Trier", () => {
@@ -17,7 +17,7 @@ describe("ProductService.buildSnapshot", () => {
     })).toThrow("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex, BarcodeLookup ou browser fallback.");
   });
 
-  test("aceita nome validado pelo PT.ProductSearch", () => {
+  test("monta documento unico para nome validado pelo PT.ProductSearch", () => {
     const service = new ProductService();
     const snapshot = service.buildSnapshot({
       ean: "7890000000001",
@@ -31,11 +31,14 @@ describe("ProductService.buildSnapshot", () => {
       },
     });
 
-    expect(snapshot.produto.nome).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
-    expect(snapshot.apresentacao.nome_exibicao).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
+    expect(snapshot.nomeSocial).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
+    expect(snapshot.descricaoProduto).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
+    expect(snapshot.classificacao).toBe("Higiene");
+    expect(snapshot.debug_tokens.length).toBe(snapshot.debug_token_count);
+    expect(snapshot.debug_embedding_dimensions).toBe(EMBEDDING_DIMENSIONS);
   });
 
-  test("aceita nome validado pelo BarcodeLookup", () => {
+  test("usa ingredientes ativos quando disponiveis", () => {
     const service = new ProductService();
     const snapshot = service.buildSnapshot({
       ean: "7896023705397",
@@ -46,14 +49,20 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "Agua Inglesa Frasco Com 500ml",
         nome_exibicao: "Agua Inglesa Frasco Com 500ml",
         categoria: "Perfumaria",
+        laboratorio: "Marca X",
+        farmacos: [
+          { nome: "Oxido de Zinco" },
+          { nome: "Acido Borico" },
+        ],
       },
     });
 
-    expect(snapshot.produto.nome).toBe("Agua Inglesa Frasco Com 500ml");
-    expect(snapshot.apresentacao.nome_exibicao).toBe("Agua Inglesa Frasco Com 500ml");
+    expect(snapshot.principioAtivo).toBe("Oxido de Zinco, Acido Borico");
+    expect(snapshot.fabricante).toBe("Marca X");
+    expect(snapshot.debug_searchable_text).toContain("Oxido de Zinco, Acido Borico");
   });
 
-  test("aceita nome validado pelo browser no PT.ProductSearch", () => {
+  test("aceita nome validado pelo browser fallback", () => {
     const service = new ProductService();
     const snapshot = service.buildSnapshot({
       ean: "7891158105395",
@@ -67,7 +76,8 @@ describe("ProductService.buildSnapshot", () => {
       },
     });
 
-    expect(snapshot.produto.nome).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
-    expect(snapshot.apresentacao.nome_exibicao).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
+    expect(snapshot.nomeSocial).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
+    expect(snapshot.debug_normalized_searchable_text).toContain("sof d go 2 000 ui 60 comprimidos orodispersiveis");
+    expect(snapshot.debug_embedding_dimensions).toBe(EMBEDDING_DIMENSIONS);
   });
 });

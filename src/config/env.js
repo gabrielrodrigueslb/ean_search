@@ -11,6 +11,8 @@ module.exports = {
   browserFallbackHeadless: process.env.BROWSER_FALLBACK_HEADLESS !== "false",
   trierRequestTimeoutMs: Number(process.env.TRIER_REQUEST_TIMEOUT_MS || 60000),
   vetorRequestTimeoutMs: Number(process.env.VETOR_REQUEST_TIMEOUT_MS || 60000),
+  bancoUnicoBaseUrl: process.env.BANCO_UNICO_BASE_URL || "https://unicocontato.tech/banco-unico",
+  bancoUnicoRequestTimeoutMs: Number(process.env.BANCO_UNICO_REQUEST_TIMEOUT_MS || 30000),
   importQueueConcurrency: Number(process.env.IMPORT_QUEUE_CONCURRENCY || 1),
   ptProductSearchMaxRequestsPerMinute: Number(process.env.PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE || 45),
 };

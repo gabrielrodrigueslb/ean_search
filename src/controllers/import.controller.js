@@ -13,6 +13,22 @@ function serializeImportacaoResponse(importacao) {
   };
 }
 
+function parseProductApi(raw) {
+  if (!raw) {
+    return {};
+  }
+
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      return {};
+    }
+  }
+
+  return raw;
+}
+
 class ImportController {
   constructor() {
     this.importService = new ImportService();
@@ -32,6 +48,7 @@ class ImportController {
     const result = await this.importService.enqueueItems({
       fonte: "csv",
       items,
+      productApi: parseProductApi(req.body?.productApi),
     });
 
     logger.info("Importacao CSV aceita para processamento", {
@@ -60,6 +77,7 @@ class ImportController {
     const result = await this.importService.enqueueItems({
       fonte: "json",
       items: normalizedItems,
+      productApi: parseProductApi(req.body?.productApi),
     });
 
     logger.info("Importacao JSON aceita para processamento", {
@@ -75,6 +93,7 @@ class ImportController {
     const {
       baseUrl,
       bearerToken,
+      productApi,
       codigo,
       ean,
       nomeProduto,
@@ -88,6 +107,7 @@ class ImportController {
     const result = await this.importService.enqueueTrierImport({
       baseUrl,
       bearerToken,
+      productApi: parseProductApi(productApi),
       filters: {
         codigo,
         codigoBarras: ean,
@@ -115,6 +135,7 @@ class ImportController {
     const {
       baseUrl,
       apiKey,
+      productApi,
       filter,
       select,
       orderby,
@@ -126,6 +147,7 @@ class ImportController {
     const result = await this.importService.enqueueVetorImport({
       baseUrl,
       apiKey,
+      productApi: parseProductApi(productApi),
       filters: {
         filter,
         select,

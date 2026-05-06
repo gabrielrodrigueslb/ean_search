@@ -138,6 +138,7 @@ describe("POST /imports/trier", () => {
     expect(__mock.enqueueTrierImport).toHaveBeenCalledWith({
       baseUrl: "https://cliente.exemplo/",
       bearerToken: "token",
+      productApi: {},
       filters: expect.objectContaining({
         codigoBarras: "7891058017507",
       }),
@@ -175,6 +176,7 @@ describe("POST /imports/vetor", () => {
     expect(__mock.enqueueVetorImport).toHaveBeenCalledWith({
       baseUrl: undefined,
       apiKey: "token-vetor",
+      productApi: {},
       filters: expect.objectContaining({
         filter: "inativo eq false and qtdEstoque gt 0",
       }),

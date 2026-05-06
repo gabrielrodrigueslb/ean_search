@@ -1,5 +1,6 @@
 const { validateEAN } = require("../utils/validateEAN");
 const { ProductService } = require("./product.service");
+const { BancoUnicoService } = require("./banco-unico.service");
 const { EnrichmentService } = require("./enrichment.service");
 const { TrierService } = require("./trier.service");
 const { VetorService } = require("./vetor.service");
@@ -13,6 +14,7 @@ class ImportService {
   constructor() {
     this.importacaoRepository = new ImportacaoRepository();
     this.productService = new ProductService();
+    this.bancoUnicoService = new BancoUnicoService();
     this.enrichmentService = new EnrichmentService();
     this.trierService = new TrierService();
     this.vetorService = new VetorService();
@@ -20,24 +22,24 @@ class ImportService {
     this.vetorImportAdapter = new VetorImportAdapter();
   }
 
-  async enqueueItems({ fonte, items }) {
+  async enqueueItems({ fonte, items, productApi }) {
     const importacao = await this.createImportacao({ fonte, items });
 
     importQueueService.enqueue({
       importacaoId: importacao.id,
-      handler: () => this.processItems({ importacaoId: importacao.id, fonte, items }),
+      handler: () => this.processItems({ importacaoId: importacao.id, fonte, items, productApi }),
     });
 
     return importacao;
   }
 
-  async runItemsNow({ fonte, items }) {
+  async runItemsNow({ fonte, items, productApi }) {
     const importacao = await this.createImportacao({ fonte, items });
-    await this.processItems({ importacaoId: importacao.id, fonte, items });
+    await this.processItems({ importacaoId: importacao.id, fonte, items, productApi });
     return this.getImportacao(importacao.id);
   }
 
-  async enqueueTrierImport({ baseUrl, bearerToken, filters = {} }) {
+  async enqueueTrierImport({ baseUrl, bearerToken, filters = {}, productApi }) {
     const pageSize = this.trierService.normalizePageSize(filters.quantidadeRegistros, 999);
 
     const importacao = await this.importacaoRepository.createImportacao({
@@ -66,6 +68,7 @@ class ImportService {
         importacaoId: importacao.id,
         baseUrl,
         bearerToken,
+        productApi,
         filters: {
           ...filters,
           quantidadeRegistros: pageSize,
@@ -76,7 +79,7 @@ class ImportService {
     return importacao;
   }
 
-  async enqueueVetorImport({ baseUrl, apiKey, filters = {} }) {
+  async enqueueVetorImport({ baseUrl, apiKey, filters = {}, productApi }) {
     const pageSize = this.vetorService.normalizePageSize(filters.top, 100);
 
     const importacao = await this.importacaoRepository.createImportacao({
@@ -103,6 +106,7 @@ class ImportService {
         importacaoId: importacao.id,
         baseUrl,
         apiKey,
+        productApi,
         filters: {
           ...filters,
           top: pageSize,
@@ -129,7 +133,7 @@ class ImportService {
     return importacao;
   }
 
-  async processItems({ importacaoId, fonte, items }) {
+  async processItems({ importacaoId, fonte, items, productApi }) {
     const enrichmentSession = this.enrichmentService.createSession();
 
     await this.importacaoRepository.updateImportacao(importacaoId, {
@@ -144,7 +148,7 @@ class ImportService {
     });
 
     try {
-      await this.processBatchItems(importacaoId, items, enrichmentSession);
+      await this.processBatchItems(importacaoId, items, enrichmentSession, productApi);
 
       return this.finalizeImportacao(importacaoId, items.length);
     } catch (error) {
@@ -163,7 +167,7 @@ class ImportService {
     }
   }
 
-  async processBatchItems(importacaoId, items, enrichmentSession = null) {
+  async processBatchItems(importacaoId, items, enrichmentSession = null, productApi = null) {
     for (const [index, item] of items.entries()) {
       logger.info("Processando item", {
         importacao_id: importacaoId,
@@ -171,12 +175,12 @@ class ImportService {
         ean_recebido: item.ean,
       });
 
-      const status = await this.processSingleItem(importacaoId, item, enrichmentSession);
+      const status = await this.processSingleItem(importacaoId, item, enrichmentSession, productApi);
       await this.incrementImportCounters(importacaoId, status);
     }
   }
 
-  async processTrierImport({ importacaoId, baseUrl, bearerToken, filters }) {
+  async processTrierImport({ importacaoId, baseUrl, bearerToken, filters, productApi }) {
     const enrichmentSession = this.enrichmentService.createSession();
     const pageSize = this.trierService.normalizePageSize(filters.quantidadeRegistros, 999);
     let primeiroRegistro = Number.parseInt(filters.primeiroRegistro, 10) || 0;
@@ -235,7 +239,7 @@ class ImportService {
           break;
         }
 
-        await this.processBatchItems(importacaoId, batch, enrichmentSession);
+        await this.processBatchItems(importacaoId, batch, enrichmentSession, productApi);
 
         if (batch.length < pageSize) {
           break;
@@ -260,7 +264,7 @@ class ImportService {
     }
   }
 
-  async processVetorImport({ importacaoId, baseUrl, apiKey, filters }) {
+  async processVetorImport({ importacaoId, baseUrl, apiKey, filters, productApi }) {
     const enrichmentSession = this.enrichmentService.createSession();
     const pageSize = this.vetorService.normalizePageSize(filters.top, 500);
     let skip = this.vetorService.normalizeSkip(filters.skip);
@@ -319,7 +323,7 @@ class ImportService {
           break;
         }
 
-        await this.processBatchItems(importacaoId, batch, enrichmentSession);
+        await this.processBatchItems(importacaoId, batch, enrichmentSession, productApi);
 
         if (batch.length < pageSize) {
           break;
@@ -344,7 +348,7 @@ class ImportService {
     }
   }
 
-  async processSingleItem(importacaoId, item, enrichmentSession = null) {
+  async processSingleItem(importacaoId, item, enrichmentSession = null, productApi = null) {
     const importItem = await this.importacaoRepository.createItem({
       importacao_id: importacaoId,
       ean: String(item.ean || ""),
@@ -409,14 +413,17 @@ class ImportService {
         return "review";
       }
 
-      const result = await this.productService.upsertImportedItem(enriched.item);
+      const productPayload = this.productService.buildSnapshot(enriched.item);
+      const result = await this.bancoUnicoService.publishProduct(productPayload, productApi || {});
 
       await this.importacaoRepository.updateItem(importItem.id, {
         status: "enriched",
         nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
         fontes_consultadas: {
           source: item.fonte || "importacao",
-          action: result.action,
+          action: "published",
+          destination: "banco_unico_api",
+          api_response: result,
           ...enriched.fontes_consultadas,
         },
       });

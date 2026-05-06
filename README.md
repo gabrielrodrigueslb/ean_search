@@ -1,14 +1,13 @@
 # EAN Search MVP
 
-MVP enxuto para **subida de itens**, **enriquecimento com FarmaIndex** e **correcao/upsert no banco**.
+MVP enxuto para **subida de itens**, **enriquecimento** e **publicacao dos produtos validados em API externa**.
 
 Este projeto ficou propositalmente pequeno. Ele nao faz mais busca, revisao, IA ou integracao direta com ERP. A ideia agora e bem objetiva:
 
 - receber itens por `CSV` ou `JSON`;
 - validar o EAN;
 - enriquecer com `FarmaIndex` quando houver match por EAN;
-- criar ou atualizar produto/apresentacao no SQLite via Prisma;
-- anexar farmacos quando o FarmaIndex trouxer composicao estruturada;
+- publicar os produtos 100% validados na API Banco Unico;
 - registrar o lote de importacao e o status de cada item;
 - manter logs simples no terminal.
 
@@ -52,6 +51,7 @@ src/
 scripts/
   import-csv.js
   import-json.js
+  publish-banco-unico.js
 
 prisma/
   schema.prisma
@@ -59,28 +59,22 @@ prisma/
 
 ## Banco
 
-O schema foi reduzido para seis entidades:
+O SQLite local agora fica apenas com o controle operacional:
 
-- `produtos`
-- `apresentacoes`
-- `farmacos`
-- `produto_farmacos`
 - `importacoes`
 - `itens_importacao`
 - `produtos_aprovacao`
 
 ### Regras principais
 
-- o `EAN` fica em `apresentacoes`
-- um `produto` pode ter varias `apresentacoes`
+- apenas produtos com nome 100% validado sao publicados
 - se o `FarmaIndex` encontrar o item, os metadados estruturados passam a prevalecer
 - o nome do catalogo so pode vir de `PT.ProductSearch` ou `FarmaIndex`
 - quando necessario, o sistema pode usar fallback em browser real com `Playwright`, tentando `PT.ProductSearch` primeiro e `BarcodeLookup` depois
 - nomes vindos da Trier ficam apenas como referencia operacional e nunca entram no cadastro final
-- se o `EAN` ja existir, o cadastro e atualizado
-- se o `EAN` nao existir, o sistema tenta anexar ao produto pelo `nome_normalizado + tipo`
-- se nao achar produto compativel, cria um novo
+- a API Banco Unico faz `upsert` por `EAN`
 - se nem `PT.ProductSearch` nem `FarmaIndex` resolverem o nome, o item vai para `produtos_aprovacao`
+- itens pendentes de aprovacao continuam no SQLite para fluxo humano
 
 ## Enriquecimento com PT + FarmaIndex
 
@@ -169,6 +163,10 @@ npm run dev
 
 ```json
 {
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  },
   "items": [
     {
       "ean": "7891058017507",
@@ -198,6 +196,7 @@ Resposta:
 ### `POST /imports/csv`
 
 Enviar `multipart/form-data` com o arquivo no campo `file`.
+Se quiser enviar configuracao da API externa junto, use o campo textual `productApi` com JSON.
 
 CSV exemplo:
 
@@ -220,7 +219,11 @@ Para **carga completa**, basta enviar:
 ```json
 {
   "baseUrl": "https://homologacao.triersistemas.com.br/sgfpod1/",
-  "bearerToken": "seu_token"
+  "bearerToken": "seu_token",
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  }
 }
 ```
 
@@ -241,7 +244,11 @@ Para carga completa:
 
 ```json
 {
-  "apiKey": "seu_token"
+  "apiKey": "seu_token",
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  }
 }
 ```
 
@@ -286,6 +293,51 @@ npm run import:csv -- .\seu-arquivo.csv
 npm run import:json -- .\seu-arquivo.json
 ```
 
+### Publicar produtos ja validados para a Banco Unico API
+
+Esse script le um banco SQLite de origem com a tabela `catalog_items` e publica
+os produtos elegiveis diretamente na API.
+
+Por padrao, ele envia apenas itens completos:
+
+- `descricaoProduto`
+- `ean`
+- `principioAtivo`
+- `classificacao`
+- `nomeSocial`
+- `fabricante`
+- `detalhes`
+
+E tambem descarta classificacao `NAO DEFINIDO`.
+
+Exemplo:
+
+```powershell
+npm run publish:banco-unico -- .\prisma\backups\dev-20260505-110801-before-api-publish-flow.db
+```
+
+Exemplo com lote controlado:
+
+```powershell
+npm run publish:banco-unico -- .\prisma\backups\dev-20260505-110801-before-api-publish-flow.db --limit=50 --batch-size=10
+```
+
+Exemplo sem publicar de fato:
+
+```powershell
+npm run publish:banco-unico -- .\prisma\backups\dev-20260505-110801-before-api-publish-flow.db --dry-run
+```
+
+Opcoes suportadas:
+
+- `--limit=N`
+- `--offset=N`
+- `--batch-size=N`
+- `--base-url=URL`
+- `--authorization=VALOR`
+- `--include-incomplete`
+- `--dry-run`
+
 O JSON pode ser:
 
 ```json
@@ -321,6 +373,26 @@ PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE=45
 ```
 
 Isso foi feito exatamente para evitar o bloqueio de `50 req/min` que voce comentou.
+
+## Banco Unico API
+
+Pelo contrato atual da documentacao:
+
+- base URL padrao: `https://unicocontato.tech/banco-unico`
+- health: `GET /health`
+- cadastro: `POST /api/products`
+- chave natural: `ean`
+- comportamento: `upsert`
+
+Campos enviados pelo pipeline para cada produto validado:
+
+- `descricaoProduto`
+- `ean`
+- `principioAtivo`
+- `classificacao`
+- `nomeSocial`
+- `fabricante`
+- `detalhes`
 
 ## Testes
 

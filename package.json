@@ -9,6 +9,7 @@
     "test": "jest --runInBand",
     "import:csv": "node scripts/import-csv.js",
     "import:json": "node scripts/import-json.js",
+    "publish:banco-unico": "node scripts/publish-banco-unico.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate"
   },
