@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon",
+    "prestart": "prisma generate",
     "start": "node src/server.js",
     "test": "jest --runInBand",
     "import:csv": "node scripts/import-csv.js",

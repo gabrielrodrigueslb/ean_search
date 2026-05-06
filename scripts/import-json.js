@@ -19,8 +19,8 @@ async function main() {
     throw new Error("O JSON precisa ser um array ou um objeto com a chave items.");
   }
 
-  initDatabase();
   await prisma.$connect();
+  await initDatabase(prisma);
 
   const normalizedItems = items.map((item) => ({
     ean: item.ean,

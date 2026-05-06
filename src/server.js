@@ -7,8 +7,8 @@ const { logger } = require("./utils/logger");
 const app = createApp();
 
 async function start() {
-  initDatabase();
   await prisma.$connect();
+  await initDatabase(prisma);
 
   app.listen(env.port, () => {
     logger.info("Servidor rodando", { url: `http://localhost:${env.port}` });

@@ -15,8 +15,8 @@ async function main() {
   const absolutePath = path.resolve(process.cwd(), inputPath);
   const buffer = fs.readFileSync(absolutePath);
 
-  initDatabase();
   await prisma.$connect();
+  await initDatabase(prisma);
 
   const adapter = new CsvImportAdapter(buffer);
   const items = await adapter.parse();
