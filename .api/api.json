@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "apis": [
+    {
+      "identifier": "convertize",
+      "source": "@convertize/v1#k4wt2elj36vybv",
+      "integrity": "sha512-yc7fXJbuBkclGjl1uZCQY5/wmbYfEEpBBxIOCxEZYoTh7VFmOSZ6dd2LDcA9Qi3V9ap4njrjPx0vINxuk4qlig==",
+      "installerVersion": "6.1.3"
+    }
+  ]
+}

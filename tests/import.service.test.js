@@ -1,0 +1,117 @@
+jest.mock("../src/repositories/importacao.repository", () => ({
+  ImportacaoRepository: jest.fn(),
+}));
+
+jest.mock("../src/services/enrichment.service", () => ({
+  EnrichmentService: jest.fn(),
+}));
+
+jest.mock("../src/services/banco-unico.service", () => ({
+  BancoUnicoService: jest.fn(),
+}));
+
+jest.mock("../src/services/trier.service", () => ({
+  TrierService: jest.fn(),
+}));
+
+jest.mock("../src/services/vetor.service", () => ({
+  VetorService: jest.fn(),
+}));
+
+jest.mock("../src/adapters/trier-import.adapter", () => ({
+  TrierImportAdapter: jest.fn(),
+}));
+
+jest.mock("../src/adapters/vetor-import.adapter", () => ({
+  VetorImportAdapter: jest.fn(),
+}));
+
+jest.mock("../src/services/import-queue.service", () => ({
+  importQueueService: {
+    enqueue: jest.fn(),
+  },
+}));
+
+const { ImportacaoRepository } = require("../src/repositories/importacao.repository");
+const { EnrichmentService } = require("../src/services/enrichment.service");
+const { BancoUnicoService } = require("../src/services/banco-unico.service");
+const { ImportService } = require("../src/services/import.service");
+
+describe("ImportService processSingleItem", () => {
+  test("salva fallback no Postgres quando a publicacao na API falha", async () => {
+    const repository = {
+      createItem: jest.fn().mockResolvedValue({
+        id: 77,
+        importacao_id: 12,
+        ean: "7891058017507",
+        nome_recebido: "Dorflex 36 Comprimidos",
+      }),
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn().mockResolvedValue({ id: 900 }),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7891058017507",
+          nome_recebido: "Dorflex 36 Comprimidos",
+          dados_brutos: {
+            origem_nome: "convertize",
+            nome: "Dorflex",
+            nome_produto: "Dorflex",
+            nome_exibicao: "Dorflex 36 Comprimidos",
+            categoria: "Analgesico",
+            laboratorio: "Opella",
+            farmacos: [{ nome: "Dipirona" }],
+          },
+        },
+        fontes_consultadas: {
+          farmaindex_busca: true,
+        },
+      }),
+      createSession: jest.fn(),
+    };
+
+    const bancoUnicoService = {
+      publishProduct: jest.fn().mockRejectedValue(Object.assign(
+        new Error("Falha ao publicar produto na Banco Unico API. Status 502."),
+        { status: 502, details: { error: "bad gateway" } },
+      )),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService();
+
+    const status = await service.processSingleItem(12, {
+      ean: "7891058017507",
+      nome_recebido: "Dorflex",
+      fonte: "json",
+      dados_brutos: {
+        origem_nome: "json",
+      },
+    });
+
+    expect(status).toBe("enriched");
+    expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
+    expect(repository.createProdutoFallbackApi).toHaveBeenCalledWith(expect.objectContaining({
+      importacao_id: 12,
+      item_importacao_id: 77,
+      ean: "7891058017507",
+      motivo_falha: "Falha ao publicar produto na Banco Unico API. Status 502.",
+      status: "pending_replay",
+    }));
+    expect(repository.updateItem).toHaveBeenLastCalledWith(77, expect.objectContaining({
+      status: "enriched",
+      fontes_consultadas: expect.objectContaining({
+        action: "stored_fallback",
+        destination: "postgres_fallback_api",
+      }),
+    }));
+  });
+});

@@ -31,7 +31,7 @@ class ImportacaoRepository {
 
     return prisma.importacao.findUnique({
       where: { id: importacaoId },
-      include: { itens: true, aprovacoes: true },
+      include: { itens: true, aprovacoes: true, fallbacks: true },
     }).then((result) => {
       if (!result) {
         return null;
@@ -47,6 +47,12 @@ class ImportacaoRepository {
         aprovacoes: result.aprovacoes.map((aprovacao) => ({
           ...aprovacao,
           dados_brutos: parseJson(aprovacao.dados_brutos),
+        })),
+        fallbacks: result.fallbacks.map((fallback) => ({
+          ...fallback,
+          payload: parseJson(fallback.payload),
+          api_config: parseJson(fallback.api_config),
+          resposta_erro: parseJson(fallback.resposta_erro),
         })),
       };
     });
@@ -125,6 +131,22 @@ class ImportacaoRepository {
     }).then((aprovacao) => ({
       ...aprovacao,
       dados_brutos: parseJson(aprovacao.dados_brutos),
+    }));
+  }
+
+  createProdutoFallbackApi(data) {
+    return prisma.produtoFallbackApi.create({
+      data: {
+        ...data,
+        payload: stringifyJson(data.payload),
+        api_config: stringifyJson(data.api_config),
+        resposta_erro: stringifyJson(data.resposta_erro),
+      },
+    }).then((fallback) => ({
+      ...fallback,
+      payload: parseJson(fallback.payload),
+      api_config: parseJson(fallback.api_config),
+      resposta_erro: parseJson(fallback.resposta_erro),
     }));
   }
 }

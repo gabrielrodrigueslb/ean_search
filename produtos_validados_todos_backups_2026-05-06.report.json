@@ -1,0 +1,35 @@
+{
+  "backups": [
+    {
+      "path": "C:\\Users\\Gabriel\\Documents\\dev\\ean_search\\prisma\\backups\\dev-20260505-110801-before-api-publish-flow.db",
+      "mode": "catalog_items",
+      "rowsFound": 895,
+      "rowsIncluded": 895,
+      "duplicatesSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\Gabriel\\Documents\\dev\\ean_search\\prisma\\backups\\dev-20260505-103801-before-catalog-unification.db",
+      "mode": "legacy_reconstructed",
+      "rowsFound": 895,
+      "rowsIncluded": 0,
+      "duplicatesSkipped": 0,
+      "skippedByDefault": true
+    },
+    {
+      "path": "C:\\Users\\Gabriel\\Documents\\dev\\ean_search\\prisma\\backups\\dev-20260504-113526.db",
+      "mode": "legacy_reconstructed",
+      "rowsFound": 261,
+      "rowsIncluded": 0,
+      "duplicatesSkipped": 0,
+      "skippedByDefault": true
+    }
+  ],
+  "totals": {
+    "includedRows": 895,
+    "uniqueRows": 895,
+    "duplicateRowsSkipped": 0,
+    "legacyRowsFound": 1156,
+    "legacyRowsIncluded": 0,
+    "legacyRowsSkipped": 1156
+  }
+}

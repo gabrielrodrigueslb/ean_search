@@ -90,6 +90,26 @@ function initSqliteDatabase() {
     CREATE INDEX IF NOT EXISTS idx_produtos_aprovacao_importacao_id ON produtos_aprovacao(importacao_id);
     CREATE INDEX IF NOT EXISTS idx_produtos_aprovacao_item_importacao_id ON produtos_aprovacao(item_importacao_id);
     CREATE INDEX IF NOT EXISTS idx_produtos_aprovacao_ean ON produtos_aprovacao(ean);
+
+    CREATE TABLE IF NOT EXISTS produtos_fallback_api (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      importacao_id INTEGER NOT NULL,
+      item_importacao_id INTEGER,
+      ean TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      api_config TEXT,
+      motivo_falha TEXT NOT NULL,
+      resposta_erro TEXT,
+      status TEXT NOT NULL DEFAULT 'pending_replay',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (importacao_id) REFERENCES importacoes(id) ON DELETE CASCADE,
+      FOREIGN KEY (item_importacao_id) REFERENCES itens_importacao(id) ON DELETE SET NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_produtos_fallback_api_importacao_id ON produtos_fallback_api(importacao_id);
+    CREATE INDEX IF NOT EXISTS idx_produtos_fallback_api_item_importacao_id ON produtos_fallback_api(item_importacao_id);
+    CREATE INDEX IF NOT EXISTS idx_produtos_fallback_api_ean ON produtos_fallback_api(ean);
+    CREATE INDEX IF NOT EXISTS idx_produtos_fallback_api_status ON produtos_fallback_api(status);
   `);
 
   db.close();
@@ -175,11 +195,35 @@ async function initPostgresDatabase(prisma) {
     )
   `);
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "${schema}"."produtos_fallback_api" (
+      "id" SERIAL PRIMARY KEY,
+      "importacao_id" INTEGER NOT NULL,
+      "item_importacao_id" INTEGER,
+      "ean" TEXT NOT NULL,
+      "payload" TEXT NOT NULL,
+      "api_config" TEXT,
+      "motivo_falha" TEXT NOT NULL,
+      "resposta_erro" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'pending_replay',
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "produtos_fallback_api_importacao_id_fkey"
+        FOREIGN KEY ("importacao_id") REFERENCES "${schema}"."importacoes"("id") ON DELETE CASCADE,
+      CONSTRAINT "produtos_fallback_api_item_importacao_id_fkey"
+        FOREIGN KEY ("item_importacao_id") REFERENCES "${schema}"."itens_importacao"("id") ON DELETE SET NULL
+    )
+  `);
+
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_itens_importacao_importacao_id" ON "${schema}"."itens_importacao"("importacao_id")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_itens_importacao_ean" ON "${schema}"."itens_importacao"("ean")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_aprovacao_importacao_id" ON "${schema}"."produtos_aprovacao"("importacao_id")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_aprovacao_item_importacao_id" ON "${schema}"."produtos_aprovacao"("item_importacao_id")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_aprovacao_ean" ON "${schema}"."produtos_aprovacao"("ean")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_fallback_api_importacao_id" ON "${schema}"."produtos_fallback_api"("importacao_id")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_fallback_api_item_importacao_id" ON "${schema}"."produtos_fallback_api"("item_importacao_id")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_fallback_api_ean" ON "${schema}"."produtos_fallback_api"("ean")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_produtos_fallback_api_status" ON "${schema}"."produtos_fallback_api"("status")`);
 }
 
 async function initDatabase(prisma) {

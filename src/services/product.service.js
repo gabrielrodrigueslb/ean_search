@@ -14,7 +14,8 @@ function pickFirstString(...values) {
 }
 
 function isTrustedNameSource(source) {
-  return source === "pt_product_search"
+  return source === "convertize"
+    || source === "pt_product_search"
     || source === "farmaindex"
     || source === "barcode_lookup"
     || source === "pt_product_search_browser"
@@ -33,7 +34,7 @@ class ProductService {
     );
 
     if (!nomeSocial) {
-      const error = new Error("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex, BarcodeLookup ou browser fallback.");
+      const error = new Error("Nome do produto nao foi validado por Convertize, FarmaIndex, BarcodeLookup ou browser fallback.");
       error.status = 400;
       throw error;
     }

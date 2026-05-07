@@ -14,16 +14,16 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por PT.ProductSearch, FarmaIndex, BarcodeLookup ou browser fallback.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, BarcodeLookup ou browser fallback.");
   });
 
-  test("monta documento unico para nome validado pelo PT.ProductSearch", () => {
+  test("monta documento unico para nome validado pela Convertize", () => {
     const service = new ProductService();
     const snapshot = service.buildSnapshot({
       ean: "7890000000001",
       nome_recebido: "Lencos Umedecidos Baby Wipes 500 Unidades",
       dados_brutos: {
-        origem_nome: "pt_product_search",
+        origem_nome: "convertize",
         nome: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_produto: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_exibicao: "Lencos Umedecidos Baby Wipes 500 Unidades",

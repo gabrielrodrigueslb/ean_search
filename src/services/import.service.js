@@ -22,6 +22,18 @@ class ImportService {
     this.vetorImportAdapter = new VetorImportAdapter();
   }
 
+  buildApiErrorDetails(error) {
+    if (!error) {
+      return null;
+    }
+
+    return {
+      message: error.message,
+      status: error.status || error.response?.status || null,
+      details: error.details || error.response?.data || null,
+    };
+  }
+
   async enqueueItems({ fonte, items, productApi }) {
     const importacao = await this.createImportacao({ fonte, items });
 
@@ -414,21 +426,60 @@ class ImportService {
       }
 
       const productPayload = this.productService.buildSnapshot(enriched.item);
-      const result = await this.bancoUnicoService.publishProduct(productPayload, productApi || {});
 
-      await this.importacaoRepository.updateItem(importItem.id, {
-        status: "enriched",
-        nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
-        fontes_consultadas: {
-          source: item.fonte || "importacao",
-          action: "published",
-          destination: "banco_unico_api",
-          api_response: result,
-          ...enriched.fontes_consultadas,
-        },
-      });
+      try {
+        const result = await this.bancoUnicoService.publishProduct(productPayload, productApi || {});
 
-      return "enriched";
+        await this.importacaoRepository.updateItem(importItem.id, {
+          status: "enriched",
+          nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
+          fontes_consultadas: {
+            source: item.fonte || "importacao",
+            action: "published",
+            destination: "banco_unico_api",
+            api_response: result,
+            ...enriched.fontes_consultadas,
+          },
+        });
+
+        return "enriched";
+      } catch (publishError) {
+        const apiError = this.buildApiErrorDetails(publishError);
+
+        await this.importacaoRepository.createProdutoFallbackApi({
+          importacao_id: importacaoId,
+          item_importacao_id: importItem.id,
+          ean: validation.ean,
+          payload: productPayload,
+          api_config: productApi || {},
+          motivo_falha: publishError.message,
+          resposta_erro: apiError,
+          status: "pending_replay",
+        });
+
+        await this.importacaoRepository.updateItem(importItem.id, {
+          status: "enriched",
+          nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
+          mensagem_erro: `Fallback Postgres acionado apos falha na API: ${publishError.message}`,
+          fontes_consultadas: {
+            source: item.fonte || "importacao",
+            action: "stored_fallback",
+            destination: "postgres_fallback_api",
+            api_error: apiError,
+            ...enriched.fontes_consultadas,
+          },
+        });
+
+        logger.error("Falha ao publicar na Banco Unico API; produto salvo em fallback no Postgres", {
+          importacao_id: importacaoId,
+          item_id: importItem.id,
+          ean: validation.ean,
+          error: publishError.message,
+          fallback: "produtos_fallback_api",
+        });
+
+        return "enriched";
+      }
     } catch (error) {
       await this.importacaoRepository.updateItem(importItem.id, {
         status: "failed",

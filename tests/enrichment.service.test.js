@@ -5,35 +5,16 @@ describe("EnrichmentService session cache", () => {
     const service = new EnrichmentService();
     const session = service.createSession();
 
-    service.ptProductSearchClient = {
-      buscarNomePorEan: jest.fn().mockRejectedValue(new Error("PT.ProductSearch bloqueou a consulta automatizada.")),
+    service.convertizeClient = {
+      buscarPorEan: jest.fn().mockResolvedValue({
+        nome: "Suplemento Alimentar Zafolat Plus 90 Capsulas",
+        origem: "convertize",
+        categoria: "Suplementos",
+      }),
     };
     service.farmaIndexClient = {
       buscarPorEan: jest.fn().mockResolvedValue(null),
       buscarDetalhe: jest.fn(),
-    };
-    service.barcodeLookupClient = {
-      buscarNomePorEan: jest.fn().mockRejectedValue(new Error("Request failed with status code 403")),
-    };
-    service.browserNameLookupClient = {
-      buscarNomePorEan: jest.fn().mockResolvedValue({
-        result: {
-          nome: "Suplemento Alimentar Zafolat Plus 90 Capsulas",
-          origem: "barcode_lookup_browser",
-        },
-        trail: [
-          {
-            source: "pt_product_search_browser",
-            nome: null,
-            error: "PT.ProductSearch bloqueou a consulta automatizada no browser.",
-          },
-          {
-            source: "barcode_lookup_browser",
-            nome: "Suplemento Alimentar Zafolat Plus 90 Capsulas",
-            error: null,
-          },
-        ],
-      }),
     };
 
     const first = await service.enrichImportedItem({
@@ -52,13 +33,11 @@ describe("EnrichmentService session cache", () => {
       },
     }, session);
 
-    expect(service.ptProductSearchClient.buscarNomePorEan).toHaveBeenCalledTimes(1);
+    expect(service.convertizeClient.buscarPorEan).toHaveBeenCalledTimes(1);
     expect(service.farmaIndexClient.buscarPorEan).toHaveBeenCalledTimes(1);
-    expect(service.barcodeLookupClient.buscarNomePorEan).toHaveBeenCalledTimes(1);
-    expect(service.browserNameLookupClient.buscarNomePorEan).toHaveBeenCalledTimes(1);
     expect(first.fontes_consultadas.cache_hit).toBe(false);
     expect(second.fontes_consultadas.cache_hit).toBe(true);
     expect(second.item.nome_recebido).toBe("Suplemento Alimentar Zafolat Plus 90 Capsulas");
-    expect(second.item.dados_brutos.origem_nome).toBe("barcode_lookup_browser");
+    expect(second.item.dados_brutos.origem_nome).toBe("convertize");
   });
 });
