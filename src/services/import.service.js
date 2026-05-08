@@ -9,6 +9,7 @@ const { importQueueService } = require("./import-queue.service");
 const { TrierImportAdapter } = require("../adapters/trier-import.adapter");
 const { VetorImportAdapter } = require("../adapters/vetor-import.adapter");
 const { logger } = require("../utils/logger");
+const env = require("../config/env");
 
 class ImportService {
   constructor() {
@@ -157,6 +158,7 @@ class ImportService {
       importacao_id: importacaoId,
       fonte,
       total_itens: items.length,
+      item_concurrency: this.getItemConcurrency(items.length),
     });
 
     try {
@@ -180,16 +182,34 @@ class ImportService {
   }
 
   async processBatchItems(importacaoId, items, enrichmentSession = null, productApi = null) {
-    for (const [index, item] of items.entries()) {
-      logger.info("Processando item", {
-        importacao_id: importacaoId,
-        item_index: index,
-        ean_recebido: item.ean,
-      });
+    const concurrency = this.getItemConcurrency(items.length);
+    let nextIndex = 0;
 
-      const status = await this.processSingleItem(importacaoId, item, enrichmentSession, productApi);
-      await this.incrementImportCounters(importacaoId, status);
-    }
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+
+        if (index >= items.length) {
+          return;
+        }
+
+        const item = items[index];
+
+        logger.info("Processando item", {
+          importacao_id: importacaoId,
+          item_index: index,
+          ean_recebido: item.ean,
+        });
+
+        const status = await this.processSingleItem(importacaoId, item, enrichmentSession, productApi);
+        await this.incrementImportCounters(importacaoId, status);
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: concurrency }, () => worker()),
+    );
   }
 
   async processTrierImport({ importacaoId, baseUrl, bearerToken, filters, productApi }) {
@@ -208,6 +228,7 @@ class ImportService {
       importacao_id: importacaoId,
       quantidade_registros: pageSize,
       primeiro_registro: primeiroRegistro,
+      item_concurrency: this.getItemConcurrency(pageSize),
     });
 
     try {
@@ -293,6 +314,7 @@ class ImportService {
       top: pageSize,
       skip,
       filter: filters.filter || null,
+      item_concurrency: this.getItemConcurrency(pageSize),
     });
 
     try {
@@ -529,6 +551,17 @@ class ImportService {
 
   getImportacao(id) {
     return this.importacaoRepository.findImportacaoById(id);
+  }
+
+  getItemConcurrency(batchSize = 0) {
+    const configured = Number(env.importItemConcurrency || 1);
+    const normalized = Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 1;
+
+    if (!batchSize || batchSize < 1) {
+      return normalized;
+    }
+
+    return Math.min(normalized, batchSize);
   }
 }
 

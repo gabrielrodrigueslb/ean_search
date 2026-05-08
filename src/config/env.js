@@ -18,5 +18,6 @@ module.exports = {
   bancoUnicoBaseUrl: process.env.BANCO_UNICO_BASE_URL || "https://unicocontato.tech/banco-unico",
   bancoUnicoRequestTimeoutMs: Number(process.env.BANCO_UNICO_REQUEST_TIMEOUT_MS || 30000),
   importQueueConcurrency: Number(process.env.IMPORT_QUEUE_CONCURRENCY || 1),
+  importItemConcurrency: Number(process.env.IMPORT_ITEM_CONCURRENCY || 3),
   ptProductSearchMaxRequestsPerMinute: Number(process.env.PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE || 45),
 };

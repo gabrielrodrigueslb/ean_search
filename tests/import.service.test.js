@@ -36,8 +36,13 @@ const { ImportacaoRepository } = require("../src/repositories/importacao.reposit
 const { EnrichmentService } = require("../src/services/enrichment.service");
 const { BancoUnicoService } = require("../src/services/banco-unico.service");
 const { ImportService } = require("../src/services/import.service");
+const env = require("../src/config/env");
 
 describe("ImportService processSingleItem", () => {
+  afterEach(() => {
+    env.importItemConcurrency = 3;
+  });
+
   test("salva fallback no Postgres quando a publicacao na API falha", async () => {
     const repository = {
       createItem: jest.fn().mockResolvedValue({
@@ -113,5 +118,52 @@ describe("ImportService processSingleItem", () => {
         destination: "postgres_fallback_api",
       }),
     }));
+  });
+
+  test("processa itens em paralelo com concorrencia configuravel", async () => {
+    env.importItemConcurrency = 3;
+
+    const repository = {
+      createItem: jest.fn(),
+      updateItem: jest.fn(),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+      incrementImportacaoCounters: jest.fn().mockResolvedValue({}),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => ({
+      createSession: jest.fn(),
+      enrichImportedItem: jest.fn(),
+    }));
+    BancoUnicoService.mockImplementation(() => ({
+      publishProduct: jest.fn(),
+    }));
+
+    const service = new ImportService();
+    const activeIndexes = new Set();
+    let maxParallelism = 0;
+
+    service.processSingleItem = jest.fn(async (_importacaoId, item) => {
+      activeIndexes.add(item.idx);
+      maxParallelism = Math.max(maxParallelism, activeIndexes.size);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      activeIndexes.delete(item.idx);
+      return "enriched";
+    });
+
+    service.incrementImportCounters = jest.fn().mockResolvedValue({});
+
+    const items = Array.from({ length: 6 }, (_, idx) => ({
+      idx,
+      ean: `789000000000${idx}`,
+    }));
+
+    await service.processBatchItems(12, items, null, null);
+
+    expect(service.processSingleItem).toHaveBeenCalledTimes(6);
+    expect(service.incrementImportCounters).toHaveBeenCalledTimes(6);
+    expect(maxParallelism).toBeGreaterThan(1);
+    expect(maxParallelism).toBeLessThanOrEqual(3);
   });
 });

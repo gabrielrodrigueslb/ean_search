@@ -158,9 +158,11 @@ class EnrichmentService {
   }
 
   async resolveExternalSources(ean) {
-    const convertizeLookup = await this.tryConvertizeLookup(ean);
+    const [convertizeLookup, searchLookup] = await Promise.all([
+      this.tryConvertizeLookup(ean),
+      this.tryFarmaLookup(ean),
+    ]);
     const convertizeResult = convertizeLookup.result;
-    const searchLookup = await this.tryFarmaLookup(ean);
     const searchResult = searchLookup.result;
     const detail = searchResult
       ? await this.farmaIndexClient.buscarDetalhe({
