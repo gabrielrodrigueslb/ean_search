@@ -1,9 +1,8 @@
-const env = require("./config/env");
-const prisma = require("./lib/prisma");
-const { createApp } = require("./app");
-const { initDatabase } = require("./lib/initDatabase");
-const { logger } = require("./utils/logger");
-
+import env from "./config/env.js";
+import prisma from "./lib/prisma.js";
+import { createApp } from "./app.js";
+import { initDatabase } from "./lib/initDatabase.js";
+import { logger } from "./utils/logger.js";
 const app = createApp();
 
 async function start() {

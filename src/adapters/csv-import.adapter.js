@@ -1,6 +1,5 @@
-const { parse } = require("csv-parse/sync");
-const { BaseImportAdapter } = require("./base-import.adapter");
-
+import { parse } from "csv-parse/sync";
+import { BaseImportAdapter } from "./base-import.adapter.js";
 class CsvImportAdapter extends BaseImportAdapter {
   constructor(buffer) {
     super("csv");
@@ -20,4 +19,4 @@ class CsvImportAdapter extends BaseImportAdapter {
   }
 }
 
-module.exports = { CsvImportAdapter };
+export { CsvImportAdapter };

@@ -12,4 +12,4 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
-module.exports = { normalizeText };
+export { normalizeText };

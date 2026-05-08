@@ -1,42 +1,34 @@
-jest.mock("../src/repositories/importacao.repository", () => ({
-  ImportacaoRepository: jest.fn(),
+import { afterEach, describe, expect, jest, test } from "@jest/globals";
+
+const ImportacaoRepositoryMock = jest.fn();
+const EnrichmentServiceMock = jest.fn();
+const BancoUnicoServiceMock = jest.fn();
+const importQueueService = {
+  enqueue: jest.fn(),
+};
+
+jest.unstable_mockModule("../src/repositories/importacao.repository.js", () => ({
+  ImportacaoRepository: ImportacaoRepositoryMock,
 }));
 
-jest.mock("../src/services/enrichment.service", () => ({
-  EnrichmentService: jest.fn(),
+jest.unstable_mockModule("../src/services/enrichment.service.js", () => ({
+  EnrichmentService: EnrichmentServiceMock,
 }));
 
-jest.mock("../src/services/banco-unico.service", () => ({
-  BancoUnicoService: jest.fn(),
+jest.unstable_mockModule("../src/services/banco-unico.service.js", () => ({
+  BancoUnicoService: BancoUnicoServiceMock,
 }));
 
-jest.mock("../src/services/trier.service", () => ({
-  TrierService: jest.fn(),
+jest.unstable_mockModule("../src/services/import-queue.service.js", () => ({
+  importQueueService,
 }));
 
-jest.mock("../src/services/vetor.service", () => ({
-  VetorService: jest.fn(),
-}));
-
-jest.mock("../src/adapters/trier-import.adapter", () => ({
-  TrierImportAdapter: jest.fn(),
-}));
-
-jest.mock("../src/adapters/vetor-import.adapter", () => ({
-  VetorImportAdapter: jest.fn(),
-}));
-
-jest.mock("../src/services/import-queue.service", () => ({
-  importQueueService: {
-    enqueue: jest.fn(),
-  },
-}));
-
-const { ImportacaoRepository } = require("../src/repositories/importacao.repository");
-const { EnrichmentService } = require("../src/services/enrichment.service");
-const { BancoUnicoService } = require("../src/services/banco-unico.service");
-const { ImportService } = require("../src/services/import.service");
-const env = require("../src/config/env");
+const { ImportacaoRepository } = await import("../src/repositories/importacao.repository.js");
+const { EnrichmentService } = await import("../src/services/enrichment.service.js");
+const { BancoUnicoService } = await import("../src/services/banco-unico.service.js");
+const { ImportService } = await import("../src/services/import.service.js");
+const envModule = await import("../src/config/env.js");
+const env = envModule.default;
 
 describe("ImportService processSingleItem", () => {
   afterEach(() => {

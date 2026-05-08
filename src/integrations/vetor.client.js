@@ -1,6 +1,5 @@
-const axios = require("axios");
-const env = require("../config/env");
-
+import axios from "axios";
+import env from "../config/env.js";
 class VetorClient {
   constructor({ baseUrl, apiKey }) {
     this.baseUrl = String(baseUrl || "https://integracao.zetti.dev").trim();
@@ -59,4 +58,4 @@ class VetorClient {
   }
 }
 
-module.exports = { VetorClient };
+export { VetorClient };

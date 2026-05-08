@@ -1,7 +1,6 @@
-const path = require("path");
-const Database = require("better-sqlite3");
-const { BancoUnicoService } = require("../src/services/banco-unico.service");
-
+import path from "path";
+import Database from "better-sqlite3";
+import { BancoUnicoService } from "../src/services/banco-unico.service.js";
 function printUsage() {
   console.log(`
 Uso:

@@ -1,5 +1,4 @@
-const { normalizeText } = require("./normalizeText");
-
+import { normalizeText } from "./normalizeText.js";
 const COMMERCIAL_PERFUMARIA_KEYWORDS = [
   "polvilho",
   "talco",
@@ -104,7 +103,4 @@ function normalizeTipo(value) {
   return "outro";
 }
 
-module.exports = {
-  classifyProductType,
-  normalizeTipo,
-};
+export { classifyProductType, normalizeTipo, };

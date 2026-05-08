@@ -1,6 +1,5 @@
-const axios = require("axios");
-const env = require("../config/env");
-
+import axios from "axios";
+import env from "../config/env.js";
 function trimTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
 }
@@ -60,4 +59,4 @@ class BancoUnicoClient {
   }
 }
 
-module.exports = { BancoUnicoClient };
+export { BancoUnicoClient };

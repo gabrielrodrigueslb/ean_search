@@ -1,5 +1,4 @@
-const { VetorClient } = require("../integrations/vetor.client");
-
+import { VetorClient } from "../integrations/vetor.client.js";
 const DEFAULT_SELECT = [
   "cdFilial",
   "cdProduto",
@@ -77,4 +76,4 @@ class VetorService {
   }
 }
 
-module.exports = { VetorService, DEFAULT_SELECT };
+export { VetorService, DEFAULT_SELECT };

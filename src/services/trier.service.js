@@ -1,5 +1,4 @@
-const { TrierClient } = require("../integrations/trier.client");
-
+import { TrierClient } from "../integrations/trier.client.js";
 class TrierService {
   normalizePageSize(value, fallback = 999) {
     const parsed = Number.parseInt(value, 10);
@@ -55,4 +54,4 @@ class TrierService {
   }
 }
 
-module.exports = { TrierService };
+export { TrierService };

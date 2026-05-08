@@ -1,4 +1,5 @@
-const { ProductService, EMBEDDING_DIMENSIONS } = require("../src/services/product.service");
+import { describe, expect, test } from "@jest/globals";
+import { EMBEDDING_DIMENSIONS, ProductService } from "../src/services/product.service.js";
 
 describe("ProductService.buildSnapshot", () => {
   test("rejeita nome vindo apenas da Trier", () => {
@@ -14,7 +15,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, BarcodeLookup ou browser fallback.");
+    })).toThrow("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
   });
 
   test("monta documento unico para nome validado pela Convertize", () => {
@@ -44,7 +45,7 @@ describe("ProductService.buildSnapshot", () => {
       ean: "7896023705397",
       nome_recebido: "Agua Inglesa Frasco Com 500ml",
       dados_brutos: {
-        origem_nome: "barcode_lookup",
+        origem_nome: "farmaindex",
         nome: "Agua Inglesa Frasco Com 500ml",
         nome_produto: "Agua Inglesa Frasco Com 500ml",
         nome_exibicao: "Agua Inglesa Frasco Com 500ml",
@@ -60,24 +61,5 @@ describe("ProductService.buildSnapshot", () => {
     expect(snapshot.principioAtivo).toBe("Oxido de Zinco, Acido Borico");
     expect(snapshot.fabricante).toBe("Marca X");
     expect(snapshot.debug_searchable_text).toContain("Oxido de Zinco, Acido Borico");
-  });
-
-  test("aceita nome validado pelo browser fallback", () => {
-    const service = new ProductService();
-    const snapshot = service.buildSnapshot({
-      ean: "7891158105395",
-      nome_recebido: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
-      dados_brutos: {
-        origem_nome: "pt_product_search_browser",
-        nome: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
-        nome_produto: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
-        nome_exibicao: "Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis",
-        categoria: "Suplementos",
-      },
-    });
-
-    expect(snapshot.nomeSocial).toBe("Sof D Go 2.000 Ui 60 Comprimidos Orodispersiveis");
-    expect(snapshot.debug_normalized_searchable_text).toContain("sof d go 2 000 ui 60 comprimidos orodispersiveis");
-    expect(snapshot.debug_embedding_dimensions).toBe(EMBEDDING_DIMENSIONS);
   });
 });

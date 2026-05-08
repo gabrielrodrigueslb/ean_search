@@ -1,6 +1,5 @@
-const prisma = require("../lib/prisma");
-const { stringifyJson, parseJson } = require("../utils/jsonField");
-
+import prisma from "../lib/prisma.js";
+import { stringifyJson, parseJson } from "../utils/jsonField.js";
 function normalizeImportacaoId(id) {
   const parsedId = Number.parseInt(id, 10);
   return Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
@@ -151,4 +150,4 @@ class ImportacaoRepository {
   }
 }
 
-module.exports = { ImportacaoRepository };
+export { ImportacaoRepository };

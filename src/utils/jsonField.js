@@ -22,4 +22,4 @@ function parseJson(value) {
   }
 }
 
-module.exports = { stringifyJson, parseJson };
+export { stringifyJson, parseJson };

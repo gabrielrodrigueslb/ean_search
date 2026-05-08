@@ -1,4 +1,5 @@
-const { EnrichmentService } = require("../src/services/enrichment.service");
+import { describe, expect, test } from "@jest/globals";
+import { EnrichmentService } from "../src/services/enrichment.service.js";
 
 describe("FarmaIndex enrichment", () => {
   test("extrai farmacos estruturados do detalhe", () => {
@@ -33,7 +34,7 @@ describe("FarmaIndex enrichment", () => {
         nome_recebido: "DORFLEX 300+35+50MG C36",
         dados_brutos: { nome: "DORFLEX 300+35+50MG C36" },
       },
-      ptResult: {
+      convertizeResult: {
         nome: "Dorflex Com 36 Comprimidos",
       },
       searchResult: {
@@ -54,7 +55,7 @@ describe("FarmaIndex enrichment", () => {
           via_adm: "Oral",
           qtde_fs: "36",
           tipo: "Novo",
-          classe: "Relaxante Muscular de Ação Central",
+          classe: "Relaxante Muscular de AÃ§Ã£o Central",
           farmacos: [
             { farmaco: "Dipirona Monoidratada", slug: "dipirona-monoidratada" },
           ],
@@ -63,8 +64,8 @@ describe("FarmaIndex enrichment", () => {
     });
 
     expect(snapshot.nome_recebido).toBe("Dorflex Com 36 Comprimidos");
-    expect(snapshot.dados_brutos.nome).toBe("Dorflex");
-    expect(snapshot.dados_brutos.origem_nome).toBe("pt_product_search");
+    expect(snapshot.dados_brutos.nome).toBe("Dorflex Com 36 Comprimidos");
+    expect(snapshot.dados_brutos.origem_nome).toBe("convertize");
     expect(snapshot.dados_brutos.origem_dados).toBe("farmaindex");
     expect(snapshot.dados_brutos.forma_farmaceutica).toBe("COMPRIMIDOS");
     expect(snapshot.dados_brutos.via_administracao).toBe("Oral");
@@ -75,27 +76,6 @@ describe("FarmaIndex enrichment", () => {
         slug: "dipirona-monoidratada",
       },
     ]);
-  });
-
-  test("quando so o PT responde, assume perfumaria por padrao", () => {
-    const service = new EnrichmentService();
-    const snapshot = service.buildSnapshot({
-      item: {
-        ean: "7890000000000",
-        nome_recebido: "Shampoo Dove 400ml",
-        dados_brutos: {},
-      },
-      ptResult: {
-        nome: "Shampoo Dove 400ml",
-      },
-      searchResult: null,
-      detail: null,
-    });
-
-    expect(snapshot.dados_brutos.nome).toBe("Shampoo Dove 400ml");
-    expect(snapshot.dados_brutos.tipo).toBe("perfumaria");
-    expect(snapshot.dados_brutos.origem_nome).toBe("pt_product_search");
-    expect(snapshot.dados_brutos.origem_dados).toBe("pt_product_search");
   });
 
   test("nao usa nome bruto da Trier como fallback no snapshot", () => {
@@ -116,31 +96,6 @@ describe("FarmaIndex enrichment", () => {
 
     expect(snapshot.nome_recebido).toBeNull();
     expect(snapshot.dados_brutos.nome).toBeNull();
-  });
-
-  test("usa BarcodeLookup como fallback final de nome", () => {
-    const service = new EnrichmentService();
-    const snapshot = service.buildSnapshot({
-      item: {
-        ean: "7896023705397",
-        nome_recebido: "AGUA ING",
-        dados_brutos: {
-          nome_trier: "AGUA ING",
-          origem_nome: "trier",
-        },
-      },
-      ptResult: null,
-      searchResult: null,
-      detail: null,
-      barcodeLookupResult: {
-        nome: "Agua Inglesa Frasco Com 500ml",
-      },
-    });
-
-    expect(snapshot.nome_recebido).toBe("Agua Inglesa Frasco Com 500ml");
-    expect(snapshot.dados_brutos.nome).toBe("Agua Inglesa Frasco Com 500ml");
-    expect(snapshot.dados_brutos.origem_nome).toBe("barcode_lookup");
-    expect(snapshot.dados_brutos.origem_dados).toBe("barcode_lookup");
   });
 
   test("classifica polvilho granado como perfumaria na taxonomia comercial", () => {

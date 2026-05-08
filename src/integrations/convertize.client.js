@@ -1,6 +1,5 @@
-const axios = require("axios");
-const env = require("../config/env");
-
+import axios from "axios";
+import env from "../config/env.js";
 function pickFirstString(...values) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -145,4 +144,4 @@ class ConvertizeClient {
   }
 }
 
-module.exports = { ConvertizeClient };
+export { ConvertizeClient };

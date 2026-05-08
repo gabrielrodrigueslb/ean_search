@@ -1,5 +1,4 @@
-const { normalizeText } = require("./normalizeText");
-
+import { normalizeText } from "./normalizeText.js";
 const EMBEDDING_DIMENSIONS = 512;
 
 function uniquePreservingOrder(values) {
@@ -70,10 +69,4 @@ function buildSearchArtifacts(parts) {
   };
 }
 
-module.exports = {
-  EMBEDDING_DIMENSIONS,
-  uniquePreservingOrder,
-  tokenize,
-  buildEmbedding,
-  buildSearchArtifacts,
-};
+export { EMBEDDING_DIMENSIONS, uniquePreservingOrder, tokenize, buildEmbedding, buildSearchArtifacts, };

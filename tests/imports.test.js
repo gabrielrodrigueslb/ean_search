@@ -1,34 +1,27 @@
-jest.mock("../src/services/import.service", () => {
-  const enqueueItems = jest.fn();
-  const enqueueTrierImport = jest.fn();
-  const enqueueVetorImport = jest.fn();
-  const getImportacao = jest.fn();
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import request from "supertest";
 
-  return {
-    ImportService: jest.fn().mockImplementation(() => ({
-      enqueueItems,
-      enqueueTrierImport,
-      enqueueVetorImport,
-      getImportacao,
-    })),
-    __mock: {
-      enqueueItems,
-      enqueueTrierImport,
-      enqueueVetorImport,
-      getImportacao,
-    },
-  };
-});
+const enqueueItems = jest.fn();
+const enqueueTrierImport = jest.fn();
+const enqueueVetorImport = jest.fn();
+const getImportacao = jest.fn();
 
-const request = require("supertest");
-const { createApp } = require("../src/app");
-const { __mock } = require("../src/services/import.service");
+jest.unstable_mockModule("../src/services/import.service.js", () => ({
+  ImportService: jest.fn().mockImplementation(() => ({
+    enqueueItems,
+    enqueueTrierImport,
+    enqueueVetorImport,
+    getImportacao,
+  })),
+}));
+
+const { createApp } = await import("../src/app.js");
 
 describe("GET /imports/:id", () => {
   beforeEach(() => {
-    __mock.enqueueItems.mockReset();
-    __mock.enqueueTrierImport.mockReset();
-    __mock.getImportacao.mockReset();
+    enqueueItems.mockReset();
+    enqueueTrierImport.mockReset();
+    getImportacao.mockReset();
   });
 
   test("retorna 400 quando o id e invalido", async () => {
@@ -41,12 +34,12 @@ describe("GET /imports/:id", () => {
       error: "Id de importacao invalido.",
       details: null,
     });
-    expect(__mock.getImportacao).not.toHaveBeenCalled();
+    expect(getImportacao).not.toHaveBeenCalled();
   });
 
   test("retorna importacao com alias importacao_id", async () => {
     const app = createApp();
-    __mock.getImportacao.mockResolvedValue({
+    getImportacao.mockResolvedValue({
       id: 7,
       status: "processing",
       itens: [],
@@ -60,18 +53,18 @@ describe("GET /imports/:id", () => {
       importacao_id: 7,
       status: "processing",
     });
-    expect(__mock.getImportacao).toHaveBeenCalledWith(7);
+    expect(getImportacao).toHaveBeenCalledWith(7);
   });
 });
 
 describe("POST /imports/json", () => {
   beforeEach(() => {
-    __mock.enqueueItems.mockReset();
+    enqueueItems.mockReset();
   });
 
   test("retorna id e importacao_id na resposta", async () => {
     const app = createApp();
-    __mock.enqueueItems.mockResolvedValue({
+    enqueueItems.mockResolvedValue({
       id: 11,
       status: "pending",
       total_itens: 1,
@@ -109,12 +102,12 @@ describe("POST /imports/json", () => {
 
 describe("POST /imports/trier", () => {
   beforeEach(() => {
-    __mock.enqueueTrierImport.mockReset();
+    enqueueTrierImport.mockReset();
   });
 
   test("retorna id e importacao_id na resposta", async () => {
     const app = createApp();
-    __mock.enqueueTrierImport.mockResolvedValue({
+    enqueueTrierImport.mockResolvedValue({
       id: 21,
       status: "pending",
       total_itens: 0,
@@ -135,7 +128,7 @@ describe("POST /imports/trier", () => {
       status: "pending",
       total_itens: 0,
     });
-    expect(__mock.enqueueTrierImport).toHaveBeenCalledWith({
+    expect(enqueueTrierImport).toHaveBeenCalledWith({
       baseUrl: "https://cliente.exemplo/",
       bearerToken: "token",
       productApi: {},
@@ -148,12 +141,12 @@ describe("POST /imports/trier", () => {
 
 describe("POST /imports/vetor", () => {
   beforeEach(() => {
-    __mock.enqueueVetorImport.mockReset();
+    enqueueVetorImport.mockReset();
   });
 
   test("retorna id e importacao_id na resposta", async () => {
     const app = createApp();
-    __mock.enqueueVetorImport.mockResolvedValue({
+    enqueueVetorImport.mockResolvedValue({
       id: 31,
       status: "pending",
       total_itens: 0,
@@ -173,7 +166,7 @@ describe("POST /imports/vetor", () => {
       status: "pending",
       total_itens: 0,
     });
-    expect(__mock.enqueueVetorImport).toHaveBeenCalledWith({
+    expect(enqueueVetorImport).toHaveBeenCalledWith({
       baseUrl: undefined,
       apiKey: "token-vetor",
       productApi: {},

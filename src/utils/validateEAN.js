@@ -30,4 +30,4 @@ function validateEAN(value) {
   return { isValid: true, ean, reason: null };
 }
 
-module.exports = { validateEAN, onlyDigits };
+export { validateEAN, onlyDigits };

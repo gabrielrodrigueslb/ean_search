@@ -1,5 +1,4 @@
-const { BaseImportAdapter } = require("./base-import.adapter");
-
+import { BaseImportAdapter } from "./base-import.adapter.js";
 function pickFirst(...values) {
   for (const value of values) {
     if (value !== undefined && value !== null && String(value).trim() !== "") {
@@ -52,4 +51,4 @@ class TrierImportAdapter extends BaseImportAdapter {
   }
 }
 
-module.exports = { TrierImportAdapter };
+export { TrierImportAdapter };

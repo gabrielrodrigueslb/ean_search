@@ -1,5 +1,4 @@
-const { logger } = require("../utils/logger");
-
+import { logger } from "../utils/logger.js";
 function requestLogger(req, res, next) {
   const startedAt = Date.now();
 
@@ -20,4 +19,4 @@ function requestLogger(req, res, next) {
   next();
 }
 
-module.exports = { requestLogger };
+export { requestLogger };

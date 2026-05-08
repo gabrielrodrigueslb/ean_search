@@ -1,5 +1,4 @@
-const { logger } = require("../utils/logger");
-
+import { logger } from "../utils/logger.js";
 function errorHandler(error, req, res, next) {
   const status = error.status || 500;
   const message = error.message || "Erro interno do servidor.";
@@ -18,4 +17,4 @@ function errorHandler(error, req, res, next) {
   });
 }
 
-module.exports = { errorHandler };
+export { errorHandler };

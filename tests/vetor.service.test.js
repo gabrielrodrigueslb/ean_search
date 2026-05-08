@@ -1,33 +1,29 @@
-jest.mock("../src/integrations/vetor.client", () => {
-  const get = jest.fn();
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 
-  return {
-    VetorClient: jest.fn().mockImplementation(() => ({
-      get,
-    })),
-    __mock: {
-      get,
-    },
-  };
-});
+const vetorClientGet = jest.fn();
 
-const { VetorService, DEFAULT_SELECT } = require("../src/services/vetor.service");
-const { __mock } = require("../src/integrations/vetor.client");
+jest.unstable_mockModule("../src/integrations/vetor.client.js", () => ({
+  VetorClient: jest.fn().mockImplementation(() => ({
+    get: vetorClientGet,
+  })),
+}));
+
+const { DEFAULT_SELECT, VetorService } = await import("../src/services/vetor.service.js");
 
 describe("VetorService.buscarProdutos", () => {
   beforeEach(() => {
-    __mock.get.mockReset();
+    vetorClientGet.mockReset();
   });
 
   test("usa defaults leves para evitar timeout", async () => {
     const service = new VetorService();
-    __mock.get.mockResolvedValue({ data: [] });
+    vetorClientGet.mockResolvedValue({ data: [] });
 
     await service.buscarProdutos({}, {
       apiKey: "token",
     });
 
-    expect(__mock.get).toHaveBeenCalledWith(
+    expect(vetorClientGet).toHaveBeenCalledWith(
       "/api/ecommerce/produtos/consulta",
       {
         $top: 100,
@@ -40,7 +36,7 @@ describe("VetorService.buscarProdutos", () => {
 
   test("aceita sobreposicoes explicitas de pagina e consulta", async () => {
     const service = new VetorService();
-    __mock.get.mockResolvedValue({ data: [] });
+    vetorClientGet.mockResolvedValue({ data: [] });
 
     await service.buscarProdutos({
       top: 300,
@@ -53,7 +49,7 @@ describe("VetorService.buscarProdutos", () => {
       apiKey: "token",
     });
 
-    expect(__mock.get).toHaveBeenCalledWith(
+    expect(vetorClientGet).toHaveBeenCalledWith(
       "/api/ecommerce/produtos/consulta",
       {
         $top: 300,

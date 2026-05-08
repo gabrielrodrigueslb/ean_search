@@ -1,6 +1,5 @@
-const env = require("../config/env");
-const { logger } = require("../utils/logger");
-
+import env from "../config/env.js";
+import { logger } from "../utils/logger.js";
 class ImportQueueService {
   constructor() {
     this.queue = [];
@@ -65,4 +64,4 @@ class ImportQueueService {
 
 const importQueueService = new ImportQueueService();
 
-module.exports = { importQueueService };
+export { importQueueService };

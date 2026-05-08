@@ -1,21 +1,34 @@
-const { EnrichmentService } = require("../src/services/enrichment.service");
+import { describe, expect, jest, test } from "@jest/globals";
+import { EnrichmentService } from "../src/services/enrichment.service.js";
 
 describe("EnrichmentService session cache", () => {
   test("reaproveita consultas externas para o mesmo EAN dentro da mesma importacao", async () => {
-    const service = new EnrichmentService();
-    const session = service.createSession();
+    const lookupByEan = jest.fn()
+      .mockResolvedValueOnce({
+        convertize: {
+          key: "convertize",
+          result: {
+            nome: "Suplemento Alimentar Zafolat Plus 90 Capsulas",
+            origem: "convertize",
+            categoria: "Suplementos",
+          },
+          detail: null,
+          error: null,
+        },
+        farmaindex: {
+          key: "farmaindex",
+          result: null,
+          detail: null,
+          error: null,
+        },
+      });
 
-    service.convertizeClient = {
-      buscarPorEan: jest.fn().mockResolvedValue({
-        nome: "Suplemento Alimentar Zafolat Plus 90 Capsulas",
-        origem: "convertize",
-        categoria: "Suplementos",
-      }),
-    };
-    service.farmaIndexClient = {
-      buscarPorEan: jest.fn().mockResolvedValue(null),
-      buscarDetalhe: jest.fn(),
-    };
+    const service = new EnrichmentService({
+      lookupSourceRegistry: {
+        lookupByEan,
+      },
+    });
+    const session = service.createSession();
 
     const first = await service.enrichImportedItem({
       ean: "7891158106637",
@@ -33,8 +46,7 @@ describe("EnrichmentService session cache", () => {
       },
     }, session);
 
-    expect(service.convertizeClient.buscarPorEan).toHaveBeenCalledTimes(1);
-    expect(service.farmaIndexClient.buscarPorEan).toHaveBeenCalledTimes(1);
+    expect(lookupByEan).toHaveBeenCalledTimes(1);
     expect(first.fontes_consultadas.cache_hit).toBe(false);
     expect(second.fontes_consultadas.cache_hit).toBe(true);
     expect(second.item.nome_recebido).toBe("Suplemento Alimentar Zafolat Plus 90 Capsulas");

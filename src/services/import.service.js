@@ -1,26 +1,25 @@
-const { validateEAN } = require("../utils/validateEAN");
-const { ProductService } = require("./product.service");
-const { BancoUnicoService } = require("./banco-unico.service");
-const { EnrichmentService } = require("./enrichment.service");
-const { TrierService } = require("./trier.service");
-const { VetorService } = require("./vetor.service");
-const { ImportacaoRepository } = require("../repositories/importacao.repository");
-const { importQueueService } = require("./import-queue.service");
-const { TrierImportAdapter } = require("../adapters/trier-import.adapter");
-const { VetorImportAdapter } = require("../adapters/vetor-import.adapter");
-const { logger } = require("../utils/logger");
-const env = require("../config/env");
-
+import { validateEAN } from "../utils/validateEAN.js";
+import { ProductService } from "./product.service.js";
+import { BancoUnicoService } from "./banco-unico.service.js";
+import { EnrichmentService } from "./enrichment.service.js";
+import { ImportacaoRepository } from "../repositories/importacao.repository.js";
+import { importQueueService } from "./import-queue.service.js";
+import { logger } from "../utils/logger.js";
+import env from "../config/env.js";
+import { createDefaultImportProviderRegistry } from "../providers/default-registries.js";
 class ImportService {
-  constructor() {
-    this.importacaoRepository = new ImportacaoRepository();
-    this.productService = new ProductService();
-    this.bancoUnicoService = new BancoUnicoService();
-    this.enrichmentService = new EnrichmentService();
-    this.trierService = new TrierService();
-    this.vetorService = new VetorService();
-    this.trierImportAdapter = new TrierImportAdapter();
-    this.vetorImportAdapter = new VetorImportAdapter();
+  constructor({
+    importacaoRepository,
+    productService,
+    bancoUnicoService,
+    enrichmentService,
+    importProviderRegistry,
+  } = {}) {
+    this.importacaoRepository = importacaoRepository || new ImportacaoRepository();
+    this.productService = productService || new ProductService();
+    this.bancoUnicoService = bancoUnicoService || new BancoUnicoService();
+    this.enrichmentService = enrichmentService || new EnrichmentService();
+    this.importProviderRegistry = importProviderRegistry || createDefaultImportProviderRegistry();
   }
 
   buildApiErrorDetails(error) {
@@ -53,77 +52,46 @@ class ImportService {
   }
 
   async enqueueTrierImport({ baseUrl, bearerToken, filters = {}, productApi }) {
-    const pageSize = this.trierService.normalizePageSize(filters.quantidadeRegistros, 999);
-
-    const importacao = await this.importacaoRepository.createImportacao({
-      fonte: "trier",
-      status: "pending",
-      total_itens: 0,
+    return this.enqueueProviderImport({
+      sourceName: "trier",
+      credentials: { baseUrl, bearerToken },
+      filters,
+      productApi,
     });
-
-    logger.info("Importacao Trier criada e aguardando processamento", {
-      importacao_id: importacao.id,
-      filtros: {
-        codigo: filters.codigo || null,
-        codigoBarras: filters.codigoBarras || null,
-        nomeProduto: filters.nomeProduto || null,
-        primeiroRegistro: filters.primeiroRegistro || 0,
-        quantidadeRegistros: pageSize,
-        ativo: filters.ativo ?? null,
-        integracaoEcommerce: filters.integracaoEcommerce ?? null,
-        processaCustoMedio: filters.processaCustoMedio ?? false,
-      },
-    });
-
-    importQueueService.enqueue({
-      importacaoId: importacao.id,
-      handler: () => this.processTrierImport({
-        importacaoId: importacao.id,
-        baseUrl,
-        bearerToken,
-        productApi,
-        filters: {
-          ...filters,
-          quantidadeRegistros: pageSize,
-        },
-      }),
-    });
-
-    return importacao;
   }
 
   async enqueueVetorImport({ baseUrl, apiKey, filters = {}, productApi }) {
-    const pageSize = this.vetorService.normalizePageSize(filters.top, 100);
+    return this.enqueueProviderImport({
+      sourceName: "vetor",
+      credentials: { baseUrl, apiKey },
+      filters,
+      productApi,
+    });
+  }
+
+  async enqueueProviderImport({ sourceName, credentials = {}, filters = {}, productApi }) {
+    const provider = this.importProviderRegistry.get(sourceName);
+    const normalizedFilters = provider.normalizeFilters(filters);
 
     const importacao = await this.importacaoRepository.createImportacao({
-      fonte: "vetor",
+      fonte: sourceName,
       status: "pending",
       total_itens: 0,
     });
 
-    logger.info("Importacao Vetor criada e aguardando processamento", {
+    logger.info(`Importacao ${sourceName} criada e aguardando processamento`, {
       importacao_id: importacao.id,
-      filtros: {
-        filter: filters.filter || null,
-        select: filters.select || "default",
-        orderby: filters.orderby || null,
-        skip: filters.skip || 0,
-        top: pageSize,
-        count: filters.count ?? false,
-      },
+      filtros: provider.describePendingFilters(normalizedFilters),
     });
 
     importQueueService.enqueue({
       importacaoId: importacao.id,
-      handler: () => this.processVetorImport({
+      handler: () => this.processProviderImport({
         importacaoId: importacao.id,
-        baseUrl,
-        apiKey,
+        sourceName,
+        credentials,
+        filters: normalizedFilters,
         productApi,
-        filters: {
-          ...filters,
-          top: pageSize,
-        },
       }),
     });
 
@@ -213,94 +181,30 @@ class ImportService {
   }
 
   async processTrierImport({ importacaoId, baseUrl, bearerToken, filters, productApi }) {
-    const enrichmentSession = this.enrichmentService.createSession();
-    const pageSize = this.trierService.normalizePageSize(filters.quantidadeRegistros, 999);
-    let primeiroRegistro = Number.parseInt(filters.primeiroRegistro, 10) || 0;
-    let totalItens = 0;
-    let page = 0;
-
-    await this.importacaoRepository.updateImportacao(importacaoId, {
-      status: "processing",
-      total_itens: 0,
+    return this.processProviderImport({
+      importacaoId,
+      sourceName: "trier",
+      credentials: { baseUrl, bearerToken },
+      filters,
+      productApi,
     });
-
-    logger.info("Processamento da importacao Trier iniciado", {
-      importacao_id: importacaoId,
-      quantidade_registros: pageSize,
-      primeiro_registro: primeiroRegistro,
-      item_concurrency: this.getItemConcurrency(pageSize),
-    });
-
-    try {
-      while (true) {
-        page += 1;
-
-        logger.info("Buscando pagina de produtos na Trier", {
-          importacao_id: importacaoId,
-          pagina: page,
-          primeiro_registro: primeiroRegistro,
-          quantidade_registros: pageSize,
-          ativo: filters.ativo ?? null,
-          integracao_ecommerce: filters.integracaoEcommerce ?? null,
-          processa_custo_medio: filters.processaCustoMedio ?? false,
-        });
-
-        const result = await this.trierService.buscarProdutos({
-          ...filters,
-          primeiroRegistro,
-          quantidadeRegistros: pageSize,
-        }, {
-          baseUrl,
-          bearerToken,
-        });
-
-        logger.info("Pagina retornada pela Trier", {
-          importacao_id: importacaoId,
-          pagina: page,
-          endpoint: result.endpoint,
-          quantidade_itens: Array.isArray(result.items) ? result.items.length : 0,
-        });
-
-        const batch = this.trierImportAdapter.normalizeBatch(result.items || []);
-        totalItens += batch.length;
-
-        await this.importacaoRepository.updateImportacao(importacaoId, {
-          total_itens: totalItens,
-        });
-
-        if (!batch.length) {
-          break;
-        }
-
-        await this.processBatchItems(importacaoId, batch, enrichmentSession, productApi);
-
-        if (batch.length < pageSize) {
-          break;
-        }
-
-        primeiroRegistro += batch.length;
-      }
-
-      return this.finalizeImportacao(importacaoId, totalItens);
-    } catch (error) {
-      await this.importacaoRepository.updateImportacao(importacaoId, {
-        status: "failed",
-        finished_at: new Date(),
-      });
-
-      logger.error("Falha geral da importacao Trier", {
-        importacao_id: importacaoId,
-        error: error.message,
-      });
-
-      throw error;
-    }
   }
 
   async processVetorImport({ importacaoId, baseUrl, apiKey, filters, productApi }) {
+    return this.processProviderImport({
+      importacaoId,
+      sourceName: "vetor",
+      credentials: { baseUrl, apiKey },
+      filters,
+      productApi,
+    });
+  }
+
+  async processProviderImport({ importacaoId, sourceName, credentials = {}, filters = {}, productApi }) {
+    const provider = this.importProviderRegistry.get(sourceName);
     const enrichmentSession = this.enrichmentService.createSession();
-    const pageSize = this.vetorService.normalizePageSize(filters.top, 500);
-    let skip = this.vetorService.normalizeSkip(filters.skip);
+    const normalizedFilters = provider.normalizeFilters(filters);
+    let state = provider.getInitialState(normalizedFilters);
     let totalItens = 0;
     let page = 0;
 
@@ -309,61 +213,49 @@ class ImportService {
       total_itens: 0,
     });
 
-    logger.info("Processamento da importacao Vetor iniciado", {
+    logger.info(`Processamento da importacao ${sourceName} iniciado`, {
       importacao_id: importacaoId,
-      top: pageSize,
-      skip,
-      filter: filters.filter || null,
-      item_concurrency: this.getItemConcurrency(pageSize),
+      ...provider.describeProcessingStart(state, normalizedFilters),
+      item_concurrency: this.getItemConcurrency(this.extractBatchSizeHint(state)),
     });
 
     try {
       while (true) {
         page += 1;
 
-        logger.info("Buscando pagina de produtos na Vetor", {
+        logger.info(`Buscando pagina de produtos na ${sourceName}`, {
           importacao_id: importacaoId,
           pagina: page,
-          skip,
-          top: pageSize,
-          filter: filters.filter || null,
+          ...provider.describePageRequest(state, normalizedFilters),
         });
 
-        const result = await this.vetorService.buscarProdutos({
-          ...filters,
-          skip,
-          top: pageSize,
-        }, {
-          baseUrl,
-          apiKey,
-        });
+        const result = await provider.fetchPage(state, normalizedFilters, credentials);
 
-        logger.info("Pagina retornada pela Vetor", {
+        logger.info(`Pagina retornada pela ${sourceName}`, {
           importacao_id: importacaoId,
           pagina: page,
           endpoint: result.endpoint,
-          quantidade_itens: Array.isArray(result.items) ? result.items.length : 0,
+          quantidade_itens: result.items.length,
           total: result.total,
         });
 
-        const batch = this.vetorImportAdapter.normalizeBatch(result.items || []);
-        totalItens += batch.length;
+        totalItens += result.items.length;
 
         await this.importacaoRepository.updateImportacao(importacaoId, {
           total_itens: result.total || totalItens,
         });
 
-        if (!batch.length) {
+        if (!result.items.length) {
           break;
         }
 
-        await this.processBatchItems(importacaoId, batch, enrichmentSession, productApi);
+        await this.processBatchItems(importacaoId, result.items, enrichmentSession, productApi);
 
-        if (batch.length < pageSize) {
+        if (!result.hasMore) {
           break;
         }
 
-        skip += batch.length;
+        state = result.nextState;
       }
 
       return this.finalizeImportacao(importacaoId, totalItens);
@@ -373,7 +265,7 @@ class ImportService {
         finished_at: new Date(),
       });
 
-      logger.error("Falha geral da importacao Vetor", {
+      logger.error(`Falha geral da importacao ${sourceName}`, {
         importacao_id: importacaoId,
         error: error.message,
       });
@@ -563,6 +455,18 @@ class ImportService {
 
     return Math.min(normalized, batchSize);
   }
+
+  extractBatchSizeHint(state = {}) {
+    if (Number.isInteger(state.quantidadeRegistros) && state.quantidadeRegistros > 0) {
+      return state.quantidadeRegistros;
+    }
+
+    if (Number.isInteger(state.top) && state.top > 0) {
+      return state.top;
+    }
+
+    return 0;
+  }
 }
 
-module.exports = { ImportService };
+export { ImportService };

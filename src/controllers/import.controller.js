@@ -1,7 +1,6 @@
-const { ImportService } = require("../services/import.service");
-const { CsvImportAdapter } = require("../adapters/csv-import.adapter");
-const { logger } = require("../utils/logger");
-
+import { ImportService } from "../services/import.service.js";
+import { CsvImportAdapter } from "../adapters/csv-import.adapter.js";
+import { logger } from "../utils/logger.js";
 function serializeImportacaoResponse(importacao) {
   if (!importacao) {
     return importacao;
@@ -184,4 +183,4 @@ class ImportController {
   };
 }
 
-module.exports = { ImportController };
+export { ImportController };

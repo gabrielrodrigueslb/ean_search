@@ -1,8 +1,7 @@
-const express = require("express");
-const importRoutes = require("./routes/import.routes");
-const { errorHandler } = require("./middleware/errorHandler");
-const { requestLogger } = require("./middleware/requestLogger");
-
+import express from "express";
+import importRoutes from "./routes/import.routes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 function createApp() {
   const app = express();
 
@@ -21,4 +20,4 @@ function createApp() {
   return app;
 }
 
-module.exports = { createApp };
+export { createApp };

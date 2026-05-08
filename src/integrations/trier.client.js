@@ -1,6 +1,5 @@
-const axios = require("axios");
-const env = require("../config/env");
-
+import axios from "axios";
+import env from "../config/env.js";
 class TrierClient {
   constructor({ baseUrl, bearerToken }) {
     this.baseUrl = String(baseUrl || "").trim();
@@ -65,4 +64,4 @@ class TrierClient {
   }
 }
 
-module.exports = { TrierClient };
+export { TrierClient };

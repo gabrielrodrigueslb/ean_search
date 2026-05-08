@@ -1,34 +1,30 @@
-jest.mock("../src/integrations/trier.client", () => {
-  const get = jest.fn();
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 
-  return {
-    TrierClient: jest.fn().mockImplementation(() => ({
-      get,
-    })),
-    __mock: {
-      get,
-    },
-  };
-});
+const trierClientGet = jest.fn();
 
-const { TrierService } = require("../src/services/trier.service");
-const { __mock } = require("../src/integrations/trier.client");
+jest.unstable_mockModule("../src/integrations/trier.client.js", () => ({
+  TrierClient: jest.fn().mockImplementation(() => ({
+    get: trierClientGet,
+  })),
+}));
+
+const { TrierService } = await import("../src/services/trier.service.js");
 
 describe("TrierService.buscarProdutos", () => {
   beforeEach(() => {
-    __mock.get.mockReset();
+    trierClientGet.mockReset();
   });
 
   test("usa obter-todos-v1 quando a carga nao possui filtros", async () => {
     const service = new TrierService();
-    __mock.get.mockResolvedValue([{ codigo: 1 }]);
+    trierClientGet.mockResolvedValue([{ codigo: 1 }]);
 
     const result = await service.buscarProdutos({}, {
       baseUrl: "https://cliente.exemplo/sgfpod1/",
       bearerToken: "token",
     });
 
-    expect(__mock.get).toHaveBeenCalledWith(
+    expect(trierClientGet).toHaveBeenCalledWith(
       "/rest/integracao/produto/obter-todos-v1",
       {
         primeiroRegistro: 0,
@@ -42,7 +38,7 @@ describe("TrierService.buscarProdutos", () => {
 
   test("usa obter-v1 quando a carga possui filtros", async () => {
     const service = new TrierService();
-    __mock.get.mockResolvedValue([{ codigo: 2 }]);
+    trierClientGet.mockResolvedValue([{ codigo: 2 }]);
 
     const result = await service.buscarProdutos({
       codigoBarras: "7891058017507",
@@ -52,7 +48,7 @@ describe("TrierService.buscarProdutos", () => {
       bearerToken: "token",
     });
 
-    expect(__mock.get).toHaveBeenCalledWith(
+    expect(trierClientGet).toHaveBeenCalledWith(
       "/rest/integracao/produto/obter-v1",
       {
         primeiroRegistro: 0,
@@ -67,7 +63,7 @@ describe("TrierService.buscarProdutos", () => {
 
   test("mantem filtros ativo e integracaoEcommerce no obter-v1", async () => {
     const service = new TrierService();
-    __mock.get.mockResolvedValue([{ codigo: 3 }]);
+    trierClientGet.mockResolvedValue([{ codigo: 3 }]);
 
     await service.buscarProdutos({
       ativo: true,
@@ -77,7 +73,7 @@ describe("TrierService.buscarProdutos", () => {
       bearerToken: "token",
     });
 
-    expect(__mock.get).toHaveBeenCalledWith(
+    expect(trierClientGet).toHaveBeenCalledWith(
       "/rest/integracao/produto/obter-v1",
       {
         primeiroRegistro: 0,

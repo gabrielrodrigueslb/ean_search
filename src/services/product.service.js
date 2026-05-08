@@ -1,6 +1,5 @@
-const { classifyProductType } = require("../utils/classifyProductType");
-const { uniquePreservingOrder, buildSearchArtifacts } = require("../utils/catalogItem");
-
+import { classifyProductType } from "../utils/classifyProductType.js";
+import { uniquePreservingOrder, buildSearchArtifacts } from "../utils/catalogItem.js";
 const EMBEDDING_DIMENSIONS = 512;
 
 function pickFirstString(...values) {
@@ -15,11 +14,7 @@ function pickFirstString(...values) {
 
 function isTrustedNameSource(source) {
   return source === "convertize"
-    || source === "pt_product_search"
-    || source === "farmaindex"
-    || source === "barcode_lookup"
-    || source === "pt_product_search_browser"
-    || source === "barcode_lookup_browser";
+    || source === "farmaindex";
 }
 
 class ProductService {
@@ -34,7 +29,7 @@ class ProductService {
     );
 
     if (!nomeSocial) {
-      const error = new Error("Nome do produto nao foi validado por Convertize, FarmaIndex, BarcodeLookup ou browser fallback.");
+      const error = new Error("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
       error.status = 400;
       throw error;
     }
@@ -117,4 +112,4 @@ class ProductService {
   }
 }
 
-module.exports = { ProductService, EMBEDDING_DIMENSIONS };
+export { ProductService, EMBEDDING_DIMENSIONS };

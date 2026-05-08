@@ -1,8 +1,7 @@
-const express = require("express");
-const multer = require("multer");
-const { ImportController } = require("../controllers/import.controller");
-const { asyncHandler } = require("../utils/asyncHandler");
-
+import express from "express";
+import multer from "multer";
+import { ImportController } from "../controllers/import.controller.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const controller = new ImportController();
@@ -13,4 +12,4 @@ router.post("/trier", asyncHandler(controller.importTrier));
 router.post("/vetor", asyncHandler(controller.importVetor));
 router.get("/:id", asyncHandler(controller.getImportacao));
 
-module.exports = router;
+export default router;

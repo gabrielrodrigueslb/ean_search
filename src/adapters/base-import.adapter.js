@@ -17,4 +17,4 @@ class BaseImportAdapter {
   }
 }
 
-module.exports = { BaseImportAdapter };
+export { BaseImportAdapter };

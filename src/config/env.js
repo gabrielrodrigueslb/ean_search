@@ -1,8 +1,7 @@
-const dotenv = require("dotenv");
-
+import dotenv from "dotenv";
 dotenv.config();
 
-module.exports = {
+const env = {
   port: Number(process.env.PORT || 3000),
   databaseUrl: process.env.DATABASE_URL,
   ptProductSearchApiToken: process.env.PT_PRODUCT_SEARCH_API_TOKEN || "",
@@ -21,3 +20,5 @@ module.exports = {
   importItemConcurrency: Number(process.env.IMPORT_ITEM_CONCURRENCY || 3),
   ptProductSearchMaxRequestsPerMinute: Number(process.env.PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE || 45),
 };
+
+export default env;

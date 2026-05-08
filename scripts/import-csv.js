@@ -1,10 +1,9 @@
-const fs = require("fs");
-const path = require("path");
-const prisma = require("../src/lib/prisma");
-const { initDatabase } = require("../src/lib/initDatabase");
-const { CsvImportAdapter } = require("../src/adapters/csv-import.adapter");
-const { ImportService } = require("../src/services/import.service");
-
+import fs from "fs";
+import path from "path";
+import prisma from "../src/lib/prisma.js";
+import { initDatabase } from "../src/lib/initDatabase.js";
+import { CsvImportAdapter } from "../src/adapters/csv-import.adapter.js";
+import { ImportService } from "../src/services/import.service.js";
 async function main() {
   const inputPath = process.argv[2];
 

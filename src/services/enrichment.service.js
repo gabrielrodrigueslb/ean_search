@@ -1,8 +1,6 @@
-const { FarmaIndexClient } = require("../integrations/farmaindex.client");
-const { ConvertizeClient } = require("../integrations/convertize.client");
-const { classifyProductType } = require("../utils/classifyProductType");
-const { normalizeText } = require("../utils/normalizeText");
-
+import { classifyProductType } from "../utils/classifyProductType.js";
+import { normalizeText } from "../utils/normalizeText.js";
+import { createDefaultProductLookupSourceRegistry } from "../providers/default-registries.js";
 function pickFirstString(...values) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -19,17 +17,12 @@ function slugify(value) {
 
 function isTrustedNameSource(source) {
   return source === "convertize"
-    || source === "pt_product_search"
-    || source === "farmaindex"
-    || source === "barcode_lookup"
-    || source === "pt_product_search_browser"
-    || source === "barcode_lookup_browser";
+    || source === "farmaindex";
 }
 
 class EnrichmentService {
-  constructor() {
-    this.farmaIndexClient = new FarmaIndexClient();
-    this.convertizeClient = new ConvertizeClient();
+  constructor({ lookupSourceRegistry } = {}) {
+    this.lookupSourceRegistry = lookupSourceRegistry || createDefaultProductLookupSourceRegistry();
   }
 
   createSession() {
@@ -73,13 +66,6 @@ class EnrichmentService {
           farmaindex_busca: Boolean(searchResult),
           farmaindex_busca_error: searchLookup.error,
           farmaindex_detalhe: false,
-          pt_product_search: false,
-          pt_product_search_error: null,
-          barcode_lookup: false,
-          barcode_lookup_error: null,
-          browser_lookup: false,
-          browser_lookup_error: null,
-          browser_lookup_trail: null,
           cache_hit: cacheHit,
           encontrado: false,
         },
@@ -113,13 +99,6 @@ class EnrichmentService {
         farmaindex_busca: Boolean(searchResult),
         farmaindex_busca_error: searchLookup.error,
         farmaindex_detalhe: Boolean(detail),
-        pt_product_search: false,
-        pt_product_search_error: null,
-        barcode_lookup: false,
-        barcode_lookup_error: null,
-        browser_lookup: false,
-        browser_lookup_error: null,
-        browser_lookup_trail: null,
         cache_hit: cacheHit,
         encontrado: true,
       },
@@ -158,18 +137,12 @@ class EnrichmentService {
   }
 
   async resolveExternalSources(ean) {
-    const [convertizeLookup, searchLookup] = await Promise.all([
-      this.tryConvertizeLookup(ean),
-      this.tryFarmaLookup(ean),
-    ]);
+    const lookups = await this.lookupSourceRegistry.lookupByEan(ean);
+    const convertizeLookup = lookups.convertize || this.emptyLookup();
+    const searchLookup = lookups.farmaindex || this.emptyLookup();
     const convertizeResult = convertizeLookup.result;
     const searchResult = searchLookup.result;
-    const detail = searchResult
-      ? await this.farmaIndexClient.buscarDetalhe({
-        slug: searchResult.slug,
-        medicamentoid: searchResult.medicamentoid,
-      })
-      : null;
+    const detail = searchLookup.detail || null;
 
     return {
       convertizeLookup,
@@ -180,40 +153,20 @@ class EnrichmentService {
     };
   }
 
+  emptyLookup() {
+    return {
+      result: null,
+      detail: null,
+      error: null,
+    };
+  }
+
   cloneValue(value) {
     if (value === undefined) {
       return undefined;
     }
 
     return JSON.parse(JSON.stringify(value));
-  }
-
-  async tryConvertizeLookup(ean) {
-    try {
-      return {
-        result: await this.convertizeClient.buscarPorEan(ean),
-        error: null,
-      };
-    } catch (error) {
-      return {
-        result: null,
-        error: error.message,
-      };
-    }
-  }
-
-  async tryFarmaLookup(ean) {
-    try {
-      return {
-        result: await this.farmaIndexClient.buscarPorEan(ean),
-        error: null,
-      };
-    } catch (error) {
-      return {
-        result: null,
-        error: error.message,
-      };
-    }
   }
 
   buildApprovalReason({ convertizeLookup, searchLookup }) {
@@ -241,15 +194,12 @@ class EnrichmentService {
   buildSnapshot({
     item,
     convertizeResult = null,
-    ptResult = null,
     searchResult = null,
     detail = null,
-    barcodeLookupResult = null,
-    browserLookupResult = null,
   }) {
     const info = detail?.info || {};
     const raw = item.dados_brutos || item;
-    const tipoFallback = this.resolveTipo({ raw, ptResult, searchResult, detail });
+    const tipoFallback = this.resolveTipo({ raw, ptResult: null, searchResult, detail });
     const trustedRawName = isTrustedNameSource(raw.origem_nome)
       ? pickFirstString(raw.nome, raw.nome_produto, raw.nome_exibicao, item.nome_recebido)
       : null;
@@ -258,19 +208,13 @@ class EnrichmentService {
       convertizeResult?.nome,
       info.produto,
       searchResult?.produto,
-      ptResult?.nome,
-      barcodeLookupResult?.nome,
-      browserLookupResult?.nome,
       trustedRawName,
     );
 
     const nomeExibicao = pickFirstString(
       convertizeResult?.nome,
-      ptResult?.nome,
       [info.produto, info.apresentacao].filter(Boolean).join(" ").trim(),
       [searchResult?.produto, searchResult?.apresentacao].filter(Boolean).join(" ").trim(),
-      barcodeLookupResult?.nome,
-      browserLookupResult?.nome,
       trustedRawName,
       produtoNome,
     );
@@ -298,26 +242,15 @@ class EnrichmentService {
         tipo: tipoFallback,
         origem_nome: convertizeResult
           ? "convertize"
-          : ptResult
-            ? "pt_product_search"
           : searchResult
             ? "farmaindex"
-            : barcodeLookupResult
-              ? "barcode_lookup"
-              : browserLookupResult?.origem
-                || raw.origem_nome
-                || null
+            : raw.origem_nome || null
         ,
         origem_dados: searchResult
           ? "farmaindex"
           : convertizeResult
             ? "convertize"
-            : ptResult
-              ? "pt_product_search"
-              : barcodeLookupResult
-                ? "barcode_lookup"
-                : browserLookupResult?.origem
-                  || raw.origem_dados
+            : raw.origem_dados
         ,
         farmacos,
       },
@@ -351,4 +284,4 @@ class EnrichmentService {
   }
 }
 
-module.exports = { EnrichmentService };
+export { EnrichmentService };

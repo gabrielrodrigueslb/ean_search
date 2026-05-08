@@ -1,5 +1,4 @@
-const { BancoUnicoClient } = require("../integrations/banco-unico.client");
-
+import { BancoUnicoClient } from "../integrations/banco-unico.client.js";
 class BancoUnicoService {
   normalizeConfig(config = {}) {
     return {
@@ -41,4 +40,4 @@ class BancoUnicoService {
   }
 }
 
-module.exports = { BancoUnicoService };
+export { BancoUnicoService };

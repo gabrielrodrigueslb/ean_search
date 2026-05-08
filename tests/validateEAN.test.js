@@ -1,4 +1,5 @@
-const { validateEAN } = require("../src/utils/validateEAN");
+import { describe, expect, test } from "@jest/globals";
+import { validateEAN } from "../src/utils/validateEAN.js";
 
 describe("validateEAN", () => {
   test("aceita EAN valido", () => {

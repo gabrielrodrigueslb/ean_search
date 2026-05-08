@@ -1,6 +1,5 @@
-const axios = require("axios");
-const env = require("../config/env");
-
+import axios from "axios";
+import env from "../config/env.js";
 function extractNextData(html) {
   const match = String(html).match(
     /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i,
@@ -52,4 +51,4 @@ class FarmaIndexClient {
   }
 }
 
-module.exports = { FarmaIndexClient };
+export { FarmaIndexClient };
