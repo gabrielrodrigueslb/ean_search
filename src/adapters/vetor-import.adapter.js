@@ -43,7 +43,9 @@ class VetorImportAdapter extends BaseImportAdapter {
   }
 
   normalizeBatch(items) {
-    return items.map((item) => this.normalizeItem(item));
+    return items
+      .map((item) => this.normalizeItem(item))
+      .filter((item) => item.ean);
   }
 }
 

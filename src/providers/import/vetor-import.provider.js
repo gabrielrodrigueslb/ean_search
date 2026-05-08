@@ -55,25 +55,52 @@ class VetorImportProvider extends ImportProviderContract {
   }
 
   async fetchPage(state = {}, filters = {}, credentials = {}) {
-    const result = await this.service.buscarProdutos({
-      ...filters,
-      skip: state.skip,
-      top: state.top,
-    }, credentials);
+    let currentTop = state.top;
 
-    const batch = this.adapter.normalizeBatch(result.items || []);
+    while (true) {
+      try {
+        const result = await this.service.buscarProdutos({
+          ...filters,
+          skip: state.skip,
+          top: currentTop,
+        }, credentials);
 
-    return {
-      raw: result.raw,
-      items: batch,
-      endpoint: result.endpoint,
-      total: result.total,
-      hasMore: batch.length === state.top,
-      nextState: {
-        ...state,
-        skip: state.skip + batch.length,
-      },
-    };
+        const batch = this.adapter.normalizeBatch(result.items || []);
+
+        return {
+          raw: result.raw,
+          items: batch,
+          endpoint: result.endpoint,
+          total: result.total,
+          hasMore: batch.length === currentTop,
+          nextState: {
+            ...state,
+            top: currentTop,
+            skip: state.skip + batch.length,
+          },
+        };
+      } catch (error) {
+        if (!this.shouldRetryWithSmallerPage(error, currentTop)) {
+          throw error;
+        }
+
+        currentTop = this.reducePageSize(currentTop);
+      }
+    }
+  }
+
+  shouldRetryWithSmallerPage(error, currentTop) {
+    return this.isTimeoutError(error) && this.reducePageSize(currentTop) < currentTop;
+  }
+
+  isTimeoutError(error) {
+    return typeof error?.message === "string"
+      && error.message.toLowerCase().includes("timeout");
+  }
+
+  reducePageSize(currentTop) {
+    const reduced = Math.floor(currentTop / 2);
+    return Math.max(20, reduced);
   }
 }
 

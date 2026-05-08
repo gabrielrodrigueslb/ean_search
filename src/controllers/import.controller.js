@@ -28,6 +28,22 @@ function parseProductApi(raw) {
   return raw;
 }
 
+function buildVetorFilter(rawFilter, cdFilial) {
+  const baseFilter = typeof rawFilter === "string" ? rawFilter.trim() : "";
+  const parsedCdFilial = Number.parseInt(cdFilial, 10);
+  const clauses = ["inativo eq false", "codigoBarras ne null", "codigoBarras ne ''"];
+
+  if (baseFilter) {
+    clauses.unshift(`(${baseFilter})`);
+  }
+
+  if (Number.isInteger(parsedCdFilial) && parsedCdFilial > 0) {
+    clauses.push(`cdFilial eq ${parsedCdFilial}`);
+  }
+
+  return clauses.join(" and ");
+}
+
 class ImportController {
   constructor() {
     this.importService = new ImportService();
@@ -136,6 +152,7 @@ class ImportController {
       apiKey,
       productApi,
       filter,
+      cdFilial,
       select,
       orderby,
       top,
@@ -148,7 +165,7 @@ class ImportController {
       apiKey,
       productApi: parseProductApi(productApi),
       filters: {
-        filter,
+        filter: buildVetorFilter(filter, cdFilial),
         select,
         orderby,
         top,
@@ -160,7 +177,8 @@ class ImportController {
     logger.info("Importacao Vetor aceita para processamento", {
       importacao_id: result.id,
       status: result.status,
-      filter: filter || null,
+      filter: buildVetorFilter(filter, cdFilial) || null,
+      cdFilial: cdFilial || null,
       top: top || null,
       skip: skip || null,
     });

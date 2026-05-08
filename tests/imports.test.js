@@ -171,7 +171,60 @@ describe("POST /imports/vetor", () => {
       apiKey: "token-vetor",
       productApi: {},
       filters: expect.objectContaining({
-        filter: "inativo eq false and qtdEstoque gt 0",
+        filter: "(inativo eq false and qtdEstoque gt 0) and inativo eq false and codigoBarras ne null and codigoBarras ne ''",
+      }),
+    });
+  });
+
+  test("combina cdFilial com o filtro enviado", async () => {
+    const app = createApp();
+    enqueueVetorImport.mockResolvedValue({
+      id: 32,
+      status: "pending",
+      total_itens: 0,
+    });
+
+    const response = await request(app)
+      .post("/imports/vetor")
+      .send({
+        apiKey: "token-vetor",
+        cdFilial: 7,
+        filter: "controlado eq false",
+      });
+
+    expect(response.status).toBe(202);
+    expect(enqueueVetorImport).toHaveBeenCalledWith({
+      baseUrl: undefined,
+      apiKey: "token-vetor",
+      productApi: {},
+      filters: expect.objectContaining({
+        filter: "(controlado eq false) and inativo eq false and codigoBarras ne null and codigoBarras ne '' and cdFilial eq 7",
+      }),
+    });
+  });
+
+  test("usa so cdFilial quando nenhum filtro manual e enviado", async () => {
+    const app = createApp();
+    enqueueVetorImport.mockResolvedValue({
+      id: 33,
+      status: "pending",
+      total_itens: 0,
+    });
+
+    const response = await request(app)
+      .post("/imports/vetor")
+      .send({
+        apiKey: "token-vetor",
+        cdFilial: 12,
+      });
+
+    expect(response.status).toBe(202);
+    expect(enqueueVetorImport).toHaveBeenCalledWith({
+      baseUrl: undefined,
+      apiKey: "token-vetor",
+      productApi: {},
+      filters: expect.objectContaining({
+        filter: "inativo eq false and codigoBarras ne null and codigoBarras ne '' and cdFilial eq 12",
       }),
     });
   });
