@@ -63,9 +63,10 @@ describe("ProductService.buildSnapshot", () => {
     expect(snapshot.debug_searchable_text).toContain("Oxido de Zinco, Acido Borico");
   });
 
-  test("aceita nome vindo do banco do cliente quando a importacao ja vem validada", () => {
+  test("rejeita nome vindo apenas do banco do cliente sem validacao externa", () => {
     const service = new ProductService();
-    const snapshot = service.buildSnapshot({
+
+    expect(() => service.buildSnapshot({
       ean: "7893736007527",
       nome_recebido: "ACETICIL 100MG ENV 10CP",
       dados_brutos: {
@@ -74,9 +75,6 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "ACETICIL 100MG ENV 10CP",
         nome_exibicao: "ACETICIL 100MG ENV 10CP",
       },
-    });
-
-    expect(snapshot.nomeSocial).toBe("ACETICIL 100MG ENV 10CP");
-    expect(snapshot.descricaoProduto).toBe("ACETICIL 100MG ENV 10CP");
+    })).toThrow("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
   });
 });

@@ -15,7 +15,6 @@ class PostgresEmbalagemImportAdapter {
         origem_dados: "cliente_postgres",
       },
       fonte: "cliente_postgres",
-      skip_enrichment: true,
     };
   }
 

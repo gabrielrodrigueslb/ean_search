@@ -159,7 +159,7 @@ describe("ImportService processSingleItem", () => {
     expect(maxParallelism).toBeLessThanOrEqual(3);
   });
 
-  test("publica item vindo do banco do cliente sem passar pelo enriquecimento externo", async () => {
+  test("item vindo do banco do cliente ainda passa pelo enriquecimento externo", async () => {
     const repository = {
       createItem: jest.fn().mockResolvedValue({
         id: 88,
@@ -173,7 +173,28 @@ describe("ImportService processSingleItem", () => {
     };
 
     const enrichmentService = {
-      enrichImportedItem: jest.fn(),
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7893736007527",
+          nome_recebido: "ACETICIL 100MG ENV 10CP",
+          dados_brutos: {
+            origem_nome: "farmaindex",
+            origem_dados: "farmaindex",
+            nome: "Aceticil",
+            nome_produto: "Aceticil",
+            nome_exibicao: "Aceticil 100mg 10 Comprimidos",
+            farmacos: [{ nome: "Acido Acetilsalicilico" }],
+          },
+        },
+        fontes_consultadas: {
+          convertize_busca: false,
+          farmaindex_busca: true,
+          farmaindex_detalhe: true,
+          encontrado: true,
+        },
+      }),
       createSession: jest.fn(),
     };
 
@@ -191,7 +212,6 @@ describe("ImportService processSingleItem", () => {
       ean: "7893736007527",
       nome_recebido: "ACETICIL 100MG ENV 10CP",
       fonte: "cliente_postgres",
-      skip_enrichment: true,
       dados_brutos: {
         origem_nome: "cliente_postgres",
         origem_dados: "cliente_postgres",
@@ -202,14 +222,13 @@ describe("ImportService processSingleItem", () => {
     });
 
     expect(status).toBe("enriched");
-    expect(enrichmentService.enrichImportedItem).not.toHaveBeenCalled();
+    expect(enrichmentService.enrichImportedItem).toHaveBeenCalledTimes(1);
     expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
     expect(repository.updateItem).toHaveBeenLastCalledWith(88, expect.objectContaining({
       status: "enriched",
       fontes_consultadas: expect.objectContaining({
         action: "published",
-        cliente_postgres: true,
-        enrichment_skipped: true,
+        farmaindex_busca: true,
       }),
     }));
   });
