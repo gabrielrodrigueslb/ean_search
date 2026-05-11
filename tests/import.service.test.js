@@ -158,4 +158,59 @@ describe("ImportService processSingleItem", () => {
     expect(maxParallelism).toBeGreaterThan(1);
     expect(maxParallelism).toBeLessThanOrEqual(3);
   });
+
+  test("publica item vindo do banco do cliente sem passar pelo enriquecimento externo", async () => {
+    const repository = {
+      createItem: jest.fn().mockResolvedValue({
+        id: 88,
+        importacao_id: 13,
+        ean: "7893736007527",
+        nome_recebido: "ACETICIL 100MG ENV 10CP",
+      }),
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn(),
+      createSession: jest.fn(),
+    };
+
+    const bancoUnicoService = {
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService();
+
+    const status = await service.processSingleItem(13, {
+      ean: "7893736007527",
+      nome_recebido: "ACETICIL 100MG ENV 10CP",
+      fonte: "cliente_postgres",
+      skip_enrichment: true,
+      dados_brutos: {
+        origem_nome: "cliente_postgres",
+        origem_dados: "cliente_postgres",
+        nome: "ACETICIL 100MG ENV 10CP",
+        nome_produto: "ACETICIL 100MG ENV 10CP",
+        nome_exibicao: "ACETICIL 100MG ENV 10CP",
+      },
+    });
+
+    expect(status).toBe("enriched");
+    expect(enrichmentService.enrichImportedItem).not.toHaveBeenCalled();
+    expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
+    expect(repository.updateItem).toHaveBeenLastCalledWith(88, expect.objectContaining({
+      status: "enriched",
+      fontes_consultadas: expect.objectContaining({
+        action: "published",
+        cliente_postgres: true,
+        enrichment_skipped: true,
+      }),
+    }));
+  });
 });

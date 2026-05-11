@@ -62,4 +62,21 @@ describe("ProductService.buildSnapshot", () => {
     expect(snapshot.fabricante).toBe("Marca X");
     expect(snapshot.debug_searchable_text).toContain("Oxido de Zinco, Acido Borico");
   });
+
+  test("aceita nome vindo do banco do cliente quando a importacao ja vem validada", () => {
+    const service = new ProductService();
+    const snapshot = service.buildSnapshot({
+      ean: "7893736007527",
+      nome_recebido: "ACETICIL 100MG ENV 10CP",
+      dados_brutos: {
+        origem_nome: "cliente_postgres",
+        nome: "ACETICIL 100MG ENV 10CP",
+        nome_produto: "ACETICIL 100MG ENV 10CP",
+        nome_exibicao: "ACETICIL 100MG ENV 10CP",
+      },
+    });
+
+    expect(snapshot.nomeSocial).toBe("ACETICIL 100MG ENV 10CP");
+    expect(snapshot.descricaoProduto).toBe("ACETICIL 100MG ENV 10CP");
+  });
 });

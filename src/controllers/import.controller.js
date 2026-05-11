@@ -186,6 +186,30 @@ class ImportController {
     return res.status(202).json(serializeImportacaoResponse(result));
   };
 
+  importPostgresEmbalagens = async (req, res) => {
+    const { db, productApi, top, skip, schema } = req.body || {};
+
+    const result = await this.importService.enqueuePostgresEmbalagensImport({
+      db: db || {},
+      productApi: parseProductApi(productApi),
+      filters: {
+        top,
+        skip,
+        schema,
+      },
+    });
+
+    logger.info("Importacao Postgres embalagens aceita para processamento", {
+      importacao_id: result.id,
+      status: result.status,
+      schema: schema || "public",
+      top: top || null,
+      skip: skip || null,
+    });
+
+    return res.status(202).json(serializeImportacaoResponse(result));
+  };
+
   getImportacao = async (req, res) => {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) {

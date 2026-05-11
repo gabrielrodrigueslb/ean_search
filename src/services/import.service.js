@@ -69,6 +69,15 @@ class ImportService {
     });
   }
 
+  async enqueuePostgresEmbalagensImport({ db = {}, filters = {}, productApi }) {
+    return this.enqueueProviderImport({
+      sourceName: "postgres-embalagens",
+      credentials: db,
+      filters,
+      productApi,
+    });
+  }
+
   async enqueueProviderImport({ sourceName, credentials = {}, filters = {}, productApi }) {
     const provider = this.importProviderRegistry.get(sourceName);
     const normalizedFilters = provider.normalizeFilters(filters);
@@ -294,16 +303,22 @@ class ImportService {
         return "failed";
       }
 
-      logger.info("Iniciando enriquecimento externo", {
-        importacao_id: importacaoId,
-        item_id: importItem.id,
-        ean: validation.ean,
-      });
+      let enriched;
 
-      const enriched = await this.enrichmentService.enrichImportedItem({
-        ...item,
-        ean: validation.ean,
-      }, enrichmentSession);
+      if (item.skip_enrichment) {
+        enriched = this.buildDirectImportResult(item, validation.ean);
+      } else {
+        logger.info("Iniciando enriquecimento externo", {
+          importacao_id: importacaoId,
+          item_id: importItem.id,
+          ean: validation.ean,
+        });
+
+        enriched = await this.enrichmentService.enrichImportedItem({
+          ...item,
+          ean: validation.ean,
+        }, enrichmentSession);
+      }
 
       logger.info("Enriquecimento concluido", {
         importacao_id: importacaoId,
@@ -409,6 +424,40 @@ class ImportService {
 
       return "failed";
     }
+  }
+
+  buildDirectImportResult(item, ean) {
+    const nome = item.nome_recebido
+      || item?.dados_brutos?.nome_exibicao
+      || item?.dados_brutos?.nome_produto
+      || item?.dados_brutos?.nome
+      || null;
+
+    return {
+      item: {
+        ...item,
+        ean,
+        nome_recebido: nome,
+        dados_brutos: {
+          ...(item.dados_brutos || item),
+          ean,
+          nome,
+          nome_produto: item?.dados_brutos?.nome_produto || nome,
+          nome_exibicao: item?.dados_brutos?.nome_exibicao || nome,
+          origem_nome: item?.dados_brutos?.origem_nome || "cliente_postgres",
+          origem_dados: item?.dados_brutos?.origem_dados || "cliente_postgres",
+        },
+      },
+      enriched: Boolean(nome),
+      requiresApproval: !nome,
+      approvalReason: nome ? null : "Item importado do banco do cliente sem nome valido.",
+      fontes_consultadas: {
+        cliente_postgres: true,
+        enrichment_skipped: true,
+        cache_hit: false,
+        encontrado: Boolean(nome),
+      },
+    };
   }
 
   async incrementImportCounters(importacaoId, status) {

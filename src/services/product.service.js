@@ -14,7 +14,8 @@ function pickFirstString(...values) {
 
 function isTrustedNameSource(source) {
   return source === "convertize"
-    || source === "farmaindex";
+    || source === "farmaindex"
+    || source === "cliente_postgres";
 }
 
 class ProductService {

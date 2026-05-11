@@ -4,6 +4,7 @@ import request from "supertest";
 const enqueueItems = jest.fn();
 const enqueueTrierImport = jest.fn();
 const enqueueVetorImport = jest.fn();
+const enqueuePostgresEmbalagensImport = jest.fn();
 const getImportacao = jest.fn();
 
 jest.unstable_mockModule("../src/services/import.service.js", () => ({
@@ -11,6 +12,7 @@ jest.unstable_mockModule("../src/services/import.service.js", () => ({
     enqueueItems,
     enqueueTrierImport,
     enqueueVetorImport,
+    enqueuePostgresEmbalagensImport,
     getImportacao,
   })),
 }));
@@ -226,6 +228,109 @@ describe("POST /imports/vetor", () => {
       filters: expect.objectContaining({
         filter: "inativo eq false and codigoBarras ne null and codigoBarras ne '' and cdFilial eq 12",
       }),
+    });
+  });
+});
+
+describe("POST /imports/postgres-embalagens", () => {
+  beforeEach(() => {
+    enqueuePostgresEmbalagensImport.mockReset();
+  });
+
+  test("recebe configuracao de banco por request e aceita a importacao", async () => {
+    const app = createApp();
+    enqueuePostgresEmbalagensImport.mockResolvedValue({
+      id: 41,
+      status: "pending",
+      total_itens: 0,
+    });
+
+    const response = await request(app)
+      .post("/imports/postgres-embalagens")
+      .send({
+        db: {
+          host: "167.234.236.103",
+          port: 5432,
+          database: "farmaciasbigfort_esc_20241008",
+          user: "unicocontato",
+          password: "segredo",
+        },
+        schema: "public",
+        top: 250,
+        skip: 0,
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      id: 41,
+      importacao_id: 41,
+      status: "pending",
+    });
+    expect(enqueuePostgresEmbalagensImport).toHaveBeenCalledWith({
+      db: {
+        host: "167.234.236.103",
+        port: 5432,
+        database: "farmaciasbigfort_esc_20241008",
+        user: "unicocontato",
+        password: "segredo",
+      },
+      productApi: {},
+      filters: {
+        top: 250,
+        skip: 0,
+        schema: "public",
+      },
+    });
+  });
+});
+
+describe("POST /imports/banco-alpha", () => {
+  beforeEach(() => {
+    enqueuePostgresEmbalagensImport.mockReset();
+  });
+
+  test("aceita a mesma configuracao do endpoint legado", async () => {
+    const app = createApp();
+    enqueuePostgresEmbalagensImport.mockResolvedValue({
+      id: 42,
+      status: "pending",
+      total_itens: 0,
+    });
+
+    const response = await request(app)
+      .post("/imports/banco-alpha")
+      .send({
+        db: {
+          host: "167.234.236.103",
+          port: 5432,
+          database: "farmaciasbigfort_esc_20241008",
+          user: "unicocontato",
+          password: "segredo",
+        },
+        top: 500,
+        skip: 0,
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      id: 42,
+      importacao_id: 42,
+      status: "pending",
+    });
+    expect(enqueuePostgresEmbalagensImport).toHaveBeenCalledWith({
+      db: {
+        host: "167.234.236.103",
+        port: 5432,
+        database: "farmaciasbigfort_esc_20241008",
+        user: "unicocontato",
+        password: "segredo",
+      },
+      productApi: {},
+      filters: {
+        top: 500,
+        skip: 0,
+        schema: undefined,
+      },
     });
   });
 });
