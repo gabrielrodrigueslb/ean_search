@@ -5,6 +5,7 @@ import { ImportProviderRegistry } from "./import/import-provider.registry.js";
 import { PostgresEmbalagemImportProvider } from "./import/postgres-embalagem-import.provider.js";
 import { TrierImportProvider } from "./import/trier-import.provider.js";
 import { VetorImportProvider } from "./import/vetor-import.provider.js";
+import { VtexImportProvider } from "./import/vtex-import.provider.js";
 function createDefaultProductLookupSourceRegistry() {
   return new ProductLookupSourceRegistry([
     new ConvertizeLookupSource(),
@@ -16,6 +17,7 @@ function createDefaultImportProviderRegistry() {
   return new ImportProviderRegistry([
     new TrierImportProvider(),
     new VetorImportProvider(),
+    new VtexImportProvider(),
     new PostgresEmbalagemImportProvider(),
   ]);
 }

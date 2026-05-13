@@ -20,6 +20,10 @@ function isTrustedNameSource(source) {
     || source === "farmaindex";
 }
 
+function isPassThroughSource(source) {
+  return source === "vtex";
+}
+
 class EnrichmentService {
   constructor({ lookupSourceRegistry } = {}) {
     this.lookupSourceRegistry = lookupSourceRegistry || createDefaultProductLookupSourceRegistry();
@@ -43,6 +47,45 @@ class EnrichmentService {
     } = resolution;
 
     if (!searchResult && !convertizeResult) {
+      const raw = item.dados_brutos || item;
+      const source = raw?.origem_nome || raw?.origem_dados || item?.fonte || null;
+      const fallbackName = pickFirstString(
+        raw?.nome_exibicao,
+        raw?.nome_produto,
+        raw?.nome,
+        item?.nome_recebido,
+      );
+
+      if (isPassThroughSource(source) && fallbackName) {
+        return {
+          item: {
+            ...item,
+            nome_recebido: fallbackName,
+            dados_brutos: {
+              ...raw,
+              nome: pickFirstString(raw?.nome, fallbackName),
+              nome_produto: pickFirstString(raw?.nome_produto, fallbackName),
+              nome_exibicao: pickFirstString(raw?.nome_exibicao, fallbackName),
+              origem_nome: "vtex",
+              origem_dados: raw?.origem_dados || "vtex",
+            },
+          },
+          enriched: true,
+          requiresApproval: false,
+          approvalReason: null,
+          fontes_consultadas: {
+            convertize_busca: Boolean(convertizeResult),
+            convertize_busca_error: convertizeLookup.error,
+            farmaindex_busca: Boolean(searchResult),
+            farmaindex_busca_error: searchLookup.error,
+            farmaindex_detalhe: false,
+            cache_hit: cacheHit,
+            encontrado: true,
+            pass_through_source: "vtex",
+          },
+        };
+      }
+
       const approvalReason = this.buildApprovalReason({
         convertizeLookup,
         searchLookup,

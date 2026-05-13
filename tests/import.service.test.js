@@ -232,4 +232,94 @@ describe("ImportService processSingleItem", () => {
       }),
     }));
   });
+
+  test("item vindo da vtex tambem e espelhado no fallback dedicado", async () => {
+    const repository = {
+      createItem: jest.fn().mockResolvedValue({
+        id: 99,
+        importacao_id: 14,
+        ean: "7891317001056",
+        nome_recebido: "Acetilcisteina Eurofarma 100mg 16 envelopes",
+      }),
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+      createProdutoFallbackVtex: jest.fn().mockResolvedValue({ id: 1001 }),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7891317001056",
+          nome_recebido: "Acetilcisteina Eurofarma 100mg 16 envelopes",
+          dados_brutos: {
+            origem_nome: "farmaindex",
+            origem_dados: "farmaindex",
+            nome: "Acetilcisteina Eurofarma",
+            nome_produto: "Acetilcisteina Eurofarma",
+            nome_exibicao: "Acetilcisteina Eurofarma 100mg 16 envelopes",
+            categoria: "Tosse Com Catarro",
+            laboratorio: "Eurofarma",
+            farmacos: [{ nome: "Acetilcisteina" }],
+          },
+        },
+        fontes_consultadas: {
+          farmaindex_busca: true,
+          farmaindex_detalhe: true,
+          encontrado: true,
+        },
+      }),
+      createSession: jest.fn(),
+    };
+
+    const bancoUnicoService = {
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService();
+
+    const status = await service.processSingleItem(14, {
+      ean: "7891317001056",
+      nome_recebido: "Acetilcisteina Eurofarma 100mg 16 envelopes",
+      fonte: "vtex",
+      dados_brutos: {
+        origem_nome: "vtex",
+        origem_dados: "vtex",
+        skuId: 20,
+        productId: 20,
+        nome: "Acetilcisteina Eurofarma 100mg 16 envelopes",
+      },
+    });
+
+    expect(status).toBe("enriched");
+    expect(repository.createProdutoFallbackVtex).toHaveBeenCalledWith(expect.objectContaining({
+      importacao_id: 14,
+      item_importacao_id: 99,
+      ean: "7891317001056",
+      status_processamento: "enriched",
+      payload_origem: expect.objectContaining({
+        origem_nome: "vtex",
+        origem_dados: "vtex",
+        skuId: 20,
+      }),
+      payload_enriquecido: expect.objectContaining({
+        origem_nome: "farmaindex",
+        origem_dados: "farmaindex",
+      }),
+      produto_payload: expect.objectContaining({
+        ean: "7891317001056",
+        principioAtivo: "Acetilcisteina",
+      }),
+      fontes_consultadas: expect.objectContaining({
+        source: "vtex",
+        farmaindex_busca: true,
+      }),
+    }));
+  });
 });

@@ -17,10 +17,15 @@ function isTrustedNameSource(source) {
     || source === "farmaindex";
 }
 
+function isPublishableNameSource(source) {
+  return isTrustedNameSource(source)
+    || source === "vtex";
+}
+
 class ProductService {
   buildSnapshot(item) {
     const raw = item.dados_brutos || item;
-    const trustedNameSource = isTrustedNameSource(raw.origem_nome);
+    const trustedNameSource = isPublishableNameSource(raw.origem_nome);
     const nomeSocial = pickFirstString(
       trustedNameSource ? raw.nome_produto : null,
       trustedNameSource ? raw.produto : null,
@@ -29,7 +34,7 @@ class ProductService {
     );
 
     if (!nomeSocial) {
-      const error = new Error("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
+      const error = new Error("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
       error.status = 400;
       throw error;
     }

@@ -30,7 +30,7 @@ class ImportacaoRepository {
 
     return prisma.importacao.findUnique({
       where: { id: importacaoId },
-      include: { itens: true, aprovacoes: true, fallbacks: true },
+      include: { itens: true, aprovacoes: true, fallbacks: true, fallbacks_vtex: true },
     }).then((result) => {
       if (!result) {
         return null;
@@ -52,6 +52,13 @@ class ImportacaoRepository {
           payload: parseJson(fallback.payload),
           api_config: parseJson(fallback.api_config),
           resposta_erro: parseJson(fallback.resposta_erro),
+        })),
+        fallbacks_vtex: result.fallbacks_vtex.map((fallback) => ({
+          ...fallback,
+          payload_origem: parseJson(fallback.payload_origem),
+          payload_enriquecido: parseJson(fallback.payload_enriquecido),
+          produto_payload: parseJson(fallback.produto_payload),
+          fontes_consultadas: parseJson(fallback.fontes_consultadas),
         })),
       };
     });
@@ -146,6 +153,24 @@ class ImportacaoRepository {
       payload: parseJson(fallback.payload),
       api_config: parseJson(fallback.api_config),
       resposta_erro: parseJson(fallback.resposta_erro),
+    }));
+  }
+
+  createProdutoFallbackVtex(data) {
+    return prisma.produtoFallbackVtex.create({
+      data: {
+        ...data,
+        payload_origem: stringifyJson(data.payload_origem),
+        payload_enriquecido: stringifyJson(data.payload_enriquecido),
+        produto_payload: stringifyJson(data.produto_payload),
+        fontes_consultadas: stringifyJson(data.fontes_consultadas),
+      },
+    }).then((fallback) => ({
+      ...fallback,
+      payload_origem: parseJson(fallback.payload_origem),
+      payload_enriquecido: parseJson(fallback.payload_enriquecido),
+      produto_payload: parseJson(fallback.produto_payload),
+      fontes_consultadas: parseJson(fallback.fontes_consultadas),
     }));
   }
 }

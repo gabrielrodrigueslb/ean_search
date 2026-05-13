@@ -186,6 +186,44 @@ class ImportController {
     return res.status(202).json(serializeImportacaoResponse(result));
   };
 
+  importVtex = async (req, res) => {
+    const {
+      accountName,
+      appKey,
+      appToken,
+      productApi,
+      top,
+      from,
+      to,
+      categoryId,
+    } = req.body || {};
+
+    const result = await this.importService.enqueueVtexImport({
+      accountName,
+      appKey,
+      appToken,
+      productApi: parseProductApi(productApi),
+      filters: {
+        top,
+        from,
+        to,
+        categoryId,
+      },
+    });
+
+    logger.info("Importacao VTEX aceita para processamento", {
+      importacao_id: result.id,
+      status: result.status,
+      accountName: accountName || null,
+      from: from || null,
+      to: to || null,
+      top: top || null,
+      categoryId: categoryId || null,
+    });
+
+    return res.status(202).json(serializeImportacaoResponse(result));
+  };
+
   importPostgresEmbalagens = async (req, res) => {
     const { db, productApi, top, skip, schema } = req.body || {};
 

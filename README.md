@@ -17,6 +17,9 @@ Este projeto ficou propositalmente pequeno. Ele nao faz mais busca, revisao, IA 
 - `POST /imports/json`
 - `POST /imports/trier`
 - `POST /imports/vetor`
+- `POST /imports/vtex`
+- `POST /imports/banco-alpha`
+- `POST /imports/postgres-embalagens`
 - `GET /imports/:id`
 - scripts locais para subir arquivo sem depender de HTTP
 
@@ -59,11 +62,16 @@ prisma/
 
 ## Banco
 
-O SQLite local agora fica apenas com o controle operacional:
+O projeto agora usa **Postgres** tanto no Prisma quanto na inicializacao automatica do schema operacional.
+Ao subir o backend, o `initDatabase()` cria o schema e as tabelas necessarias se ainda nao existirem.
+
+Tabelas operacionais:
 
 - `importacoes`
 - `itens_importacao`
 - `produtos_aprovacao`
+- `produtos_fallback_api`
+- `produtos_fallback_vtex`
 
 ### Regras principais
 
@@ -74,7 +82,8 @@ O SQLite local agora fica apenas com o controle operacional:
 - nomes vindos da Trier ficam apenas como referencia operacional e nunca entram no cadastro final
 - a API Banco Unico faz `upsert` por `EAN`
 - se nem `PT.ProductSearch` nem `FarmaIndex` resolverem o nome, o item vai para `produtos_aprovacao`
-- itens pendentes de aprovacao continuam no SQLite para fluxo humano
+- itens pendentes de aprovacao continuam no Postgres para fluxo humano
+- itens importados da VTEX podem ser espelhados em `produtos_fallback_vtex` para auditoria operacional da origem
 
 ## Enriquecimento com PT + FarmaIndex
 
@@ -128,25 +137,40 @@ Se o FarmaIndex nao encontrar o EAN, o item continua sendo importado com os dado
 Exemplo:
 
 ```env
-DATABASE_URL="file:C:/Users/Gabriel/Documents/dev/ean_search/prisma/dev.db"
-PORT=3000
+DATABASE_URL="postgresql://usuario:senha@host:5432/banco_eans?schema=publico"
+PORT=4029
 REQUEST_TIMEOUT_MS=10000
 IMPORT_QUEUE_CONCURRENCY=1
+IMPORT_ITEM_CONCURRENCY=8
 PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE=45
 BROWSER_FALLBACK_TIMEOUT_MS=45000
 BROWSER_FALLBACK_HEADLESS=true
 ```
 
-### 2. gerar o client do Prisma
+### 2. instalar dependencias
 
 ```powershell
-npx prisma generate
+npm.cmd install
 ```
 
-### 3. rodar o backend
+Se o PowerShell bloquear `npm` por policy local, use `npm.cmd` como acima.
+
+### 3. gerar o client do Prisma
 
 ```powershell
-npm run dev
+npm.cmd run prisma:generate
+```
+
+### 4. rodar o backend
+
+```powershell
+npm.cmd run dev
+```
+
+Com o `.env` atual deste repositorio, a aplicacao sobe em:
+
+```text
+http://localhost:4029
 ```
 
 ## Endpoints
@@ -210,6 +234,45 @@ ean,nome,tipo,categoria,descricao,forma_farmaceutica,quantidade
 
 Retorna o resumo da importacao e os itens processados.
 
+Exemplo:
+
+```json
+{
+  "id": 1,
+  "importacao_id": 1,
+  "fonte": "json",
+  "status": "completed",
+  "total_itens": 1,
+  "itens_processados": 1,
+  "itens_sucesso": 1,
+  "itens_falha": 0,
+  "itens_revisao": 0,
+  "created_at": "2026-05-12T12:00:00.000Z",
+  "finished_at": "2026-05-12T12:00:03.000Z",
+  "itens": [
+    {
+      "id": 10,
+      "importacao_id": 1,
+      "ean": "7891058017507",
+      "nome_recebido": "Dorflex Com 36 Comprimidos",
+      "dados_brutos": {
+        "ean": "7891058017507",
+        "nome": "Dorflex Com 36 Comprimidos"
+      },
+      "status": "enriched",
+      "mensagem_erro": null,
+      "fontes_consultadas": {
+        "source": "json",
+        "action": "published",
+        "destination": "banco_unico_api"
+      }
+    }
+  ],
+  "aprovacoes": [],
+  "fallbacks": []
+}
+```
+
 ### `POST /imports/trier`
 
 Importa produtos diretamente da Trier em paginas de ate `999` itens por chamada.
@@ -235,6 +298,26 @@ Nesse caso, o backend:
 - continua paginando ate a Trier nao retornar mais itens
 
 Se voce enviar filtros como `ean`, `codigo`, `nomeProduto`, `ativo` ou `integracaoEcommerce`, o backend muda para `obter-v1`.
+
+Body com filtros:
+
+```json
+{
+  "baseUrl": "https://homologacao.triersistemas.com.br/sgfpod1/",
+  "bearerToken": "seu_token",
+  "ean": "7891058017507",
+  "nomeProduto": "Dorflex",
+  "primeiroRegistro": 0,
+  "quantidadeRegistros": 200,
+  "ativo": true,
+  "integracaoEcommerce": true,
+  "processaCustoMedio": false,
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  }
+}
+```
 
 ### `POST /imports/vetor`
 
@@ -279,6 +362,91 @@ Campos aceitos:
 - `skip` para `$skip`
 - `count` para `$count`
 
+### `POST /imports/vtex`
+
+Importa produtos da VTEX usando:
+
+1. `GET /api/catalog_system/pvt/products/GetProductAndSkuIds`
+2. `GET /api/catalog_system/pvt/sku/stockkeepingunitbyid/{skuId}`
+
+O `environment` fica fixo em `vtexcommercestable`.
+
+Body:
+
+```json
+{
+  "accountName": "natusfarma",
+  "appKey": "vtex-app-key",
+  "appToken": "vtex-app-token",
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  }
+}
+```
+
+Campos aceitos:
+
+- `accountName` obrigatorio
+- `appKey` obrigatorio
+- `appToken` obrigatorio
+- `from` opcional, default `1`
+- `top` opcional, default `100`, maximo `250`
+- `to` opcional; se nao for enviado, o backend calcula `from + top - 1`
+- `categoryId` opcional para restringir a consulta por categoria
+- `productApi` opcional
+
+Durante a importacao:
+
+- se voce enviar apenas `accountName`, `appKey` e `appToken`, o backend faz **carga completa**
+- nesse modo, ele comeca em `from = 1` e continua paginando automaticamente ate acabar o retorno da VTEX
+- o item bruto vem da VTEX
+- o `EAN` e usado para enriquecimento no `FarmaIndex`
+- itens com origem `vtex` tambem sao espelhados na tabela `produtos_fallback_vtex`
+
+### `POST /imports/postgres-embalagens`
+
+Importa diretamente da tabela `${schema}.embalagem` de um Postgres do cliente, fazendo `distinct on (codigobarras)`.
+
+Body:
+
+```json
+{
+  "db": {
+    "host": "145.223.27.100",
+    "port": 5432,
+    "database": "cliente_db",
+    "user": "postgres",
+    "password": "sua_senha",
+    "schema": "public"
+  },
+  "top": 100,
+  "skip": 0,
+  "schema": "public",
+  "productApi": {
+    "baseUrl": "https://unicocontato.tech/banco-unico",
+    "authorization": "Bearer SEU_TOKEN_OPCIONAL"
+  }
+}
+```
+
+Campos aceitos:
+
+- `db.host` obrigatorio
+- `db.port` opcional, default `5432`
+- `db.database` obrigatorio
+- `db.user` obrigatorio
+- `db.password` obrigatorio
+- `db.schema` opcional, default `public`
+- `schema` opcional no nivel raiz; o controller encaminha esse valor para a consulta paginada
+- `top` opcional, default `100`
+- `skip` opcional, default `0`
+- `productApi` opcional
+
+### `POST /imports/banco-alpha`
+
+Alias de `POST /imports/postgres-embalagens`. Aceita exatamente o mesmo body e executa o mesmo fluxo.
+
 ## Scripts locais
 
 ### Importar CSV direto
@@ -295,7 +463,7 @@ npm run import:json -- .\seu-arquivo.json
 
 ### Publicar produtos ja validados para a Banco Unico API
 
-Esse script le um banco SQLite de origem com a tabela `catalog_items` e publica
+Esse script le um banco de origem com a tabela `catalog_items` e publica
 os produtos elegiveis diretamente na API.
 
 Por padrao, ele envia apenas itens completos:

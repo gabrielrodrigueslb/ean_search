@@ -10,6 +10,7 @@ router.post("/csv", upload.single("file"), asyncHandler(controller.importCsv));
 router.post("/json", asyncHandler(controller.importJson));
 router.post("/trier", asyncHandler(controller.importTrier));
 router.post("/vetor", asyncHandler(controller.importVetor));
+router.post("/vtex", asyncHandler(controller.importVtex));
 router.post("/banco-alpha", asyncHandler(controller.importPostgresEmbalagens));
 router.post("/postgres-embalagens", asyncHandler(controller.importPostgresEmbalagens));
 router.get("/:id", asyncHandler(controller.getImportacao));

@@ -36,6 +36,7 @@ model Importacao {
   itens             ItemImportacao[]
   aprovacoes        ProdutoAprovacao[]
   fallbacks         ProdutoFallbackApi[]
+  fallbacks_vtex    ProdutoFallbackVtex[]
 
   @@map("importacoes")
 }
@@ -54,6 +55,7 @@ model ItemImportacao {
   importacao         Importacao           @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
   aprovacoes         ProdutoAprovacao[]
   fallbacks          ProdutoFallbackApi[]
+  fallbacks_vtex     ProdutoFallbackVtex[]
 
   @@index([importacao_id])
   @@index([ean])
@@ -101,4 +103,27 @@ model ProdutoFallbackApi {
   @@index([ean])
   @@index([status])
   @@map("produtos_fallback_api")
+}
+
+model ProdutoFallbackVtex {
+  id                 Int            @id @default(autoincrement())
+  importacao_id      Int
+  item_importacao_id Int?
+  ean                String
+  nome_recebido      String?
+  status_processamento String
+  payload_origem     String
+  payload_enriquecido String?
+  produto_payload    String?
+  fontes_consultadas String?
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+  importacao         Importacao     @relation(fields: [importacao_id], references: [id], onDelete: Cascade)
+  item_importacao    ItemImportacao? @relation(fields: [item_importacao_id], references: [id], onDelete: SetNull)
+
+  @@index([importacao_id])
+  @@index([item_importacao_id])
+  @@index([ean])
+  @@index([status_processamento])
+  @@map("produtos_fallback_vtex")
 }

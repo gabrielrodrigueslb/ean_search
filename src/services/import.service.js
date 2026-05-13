@@ -34,6 +34,37 @@ class ImportService {
     };
   }
 
+  isVtexItem(item) {
+    return String(item?.fonte || item?.dados_brutos?.origem_dados || "").toLowerCase() === "vtex";
+  }
+
+  async storeVtexFallback({
+    importacaoId,
+    importItem,
+    item,
+    ean,
+    statusProcessamento,
+    enrichedItem = null,
+    productPayload = null,
+    fontesConsultadas = null,
+  }) {
+    if (!this.isVtexItem(item)) {
+      return null;
+    }
+
+    return this.importacaoRepository.createProdutoFallbackVtex({
+      importacao_id: importacaoId,
+      item_importacao_id: importItem.id,
+      ean: String(ean || item?.ean || ""),
+      nome_recebido: enrichedItem?.nome_recebido || item?.nome_recebido || importItem?.nome_recebido || null,
+      status_processamento: statusProcessamento,
+      payload_origem: item?.dados_brutos || item,
+      payload_enriquecido: enrichedItem?.dados_brutos || enrichedItem || null,
+      produto_payload: productPayload,
+      fontes_consultadas: fontesConsultadas,
+    });
+  }
+
   async enqueueItems({ fonte, items, productApi }) {
     const importacao = await this.createImportacao({ fonte, items });
 
@@ -73,6 +104,19 @@ class ImportService {
     return this.enqueueProviderImport({
       sourceName: "postgres-embalagens",
       credentials: db,
+      filters,
+      productApi,
+    });
+  }
+
+  async enqueueVtexImport({ accountName, appKey, appToken, filters = {}, productApi }) {
+    return this.enqueueProviderImport({
+      sourceName: "vtex",
+      credentials: {
+        accountName,
+        appKey,
+        appToken,
+      },
       filters,
       productApi,
     });
@@ -324,6 +368,20 @@ class ImportService {
       });
 
       if (enriched.requiresApproval) {
+        await this.storeVtexFallback({
+          importacaoId,
+          importItem,
+          item,
+          ean: validation.ean,
+          statusProcessamento: "review",
+          enrichedItem: enriched.item,
+          fontesConsultadas: {
+            source: item.fonte || "importacao",
+            approval_required: true,
+            ...enriched.fontes_consultadas,
+          },
+        });
+
         await this.importacaoRepository.createProdutoAprovacao({
           importacao_id: importacaoId,
           item_importacao_id: importItem.id,
@@ -349,6 +407,20 @@ class ImportService {
       }
 
       const productPayload = this.productService.buildSnapshot(enriched.item);
+
+      await this.storeVtexFallback({
+        importacaoId,
+        importItem,
+        item,
+        ean: validation.ean,
+        statusProcessamento: "enriched",
+        enrichedItem: enriched.item,
+        productPayload,
+        fontesConsultadas: {
+          source: item.fonte || "importacao",
+          ...enriched.fontes_consultadas,
+        },
+      });
 
       try {
         const result = await this.bancoUnicoService.publishProduct(productPayload, productApi || {});

@@ -15,7 +15,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
   });
 
   test("monta documento unico para nome validado pela Convertize", () => {
@@ -75,6 +75,28 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "ACETICIL 100MG ENV 10CP",
         nome_exibicao: "ACETICIL 100MG ENV 10CP",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize ou FarmaIndex.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+  });
+
+  test("aceita nome vindo da vtex quando for pass-through operacional", () => {
+    const service = new ProductService();
+    const snapshot = service.buildSnapshot({
+      ean: "7896226500416",
+      nome_recebido: "Hidratante Corporal VTEX",
+      dados_brutos: {
+        origem_nome: "vtex",
+        origem_dados: "vtex",
+        nome: "Hidratante Corporal VTEX",
+        nome_produto: "Hidratante Corporal VTEX",
+        nome_exibicao: "Hidratante Corporal VTEX",
+        categoria: "Perfumaria",
+        laboratorio: "Marca VTEX",
+      },
+    });
+
+    expect(snapshot.nomeSocial).toBe("Hidratante Corporal VTEX");
+    expect(snapshot.descricaoProduto).toBe("Hidratante Corporal VTEX");
+    expect(snapshot.classificacao).toBe("Perfumaria");
+    expect(snapshot.fabricante).toBe("Marca VTEX");
   });
 });
