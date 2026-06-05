@@ -140,18 +140,40 @@ function loadProducts(db, options) {
 
   const effectiveLimit = options.limit ?? -1;
 
+  function parseDetailsJson(value) {
+    if (!String(value || "").trim()) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
   return db.prepare(sql).all({
     limit: effectiveLimit,
     offset: options.offset,
-  }).map((row) => ({
-    descricaoProduto: row.description,
-    ean: row.ean,
-    principioAtivo: row.active_ingredient,
-    classificacao: row.classification,
-    nomeSocial: row.social_name,
-    fabricante: row.manufacturer,
-    detalhes: row.details,
-  }));
+  }).map((row) => {
+    const details = parseDetailsJson(row.details);
+    const finalStructure = details?.estrutura_final || null;
+
+    return {
+      descricaoProduto: row.description,
+      ean: row.ean,
+      principioAtivo: row.active_ingredient,
+      classificacao: row.classification,
+      nomeSocial: row.social_name,
+      fabricante: row.manufacturer,
+      departamento: finalStructure?.departamento || details?.departamento || null,
+      categoria: finalStructure?.categoria || details?.categoria || null,
+      subcategoria: finalStructure?.subcategoria || details?.subcategoria || null,
+      segmento: finalStructure?.segmento || details?.segmento || null,
+      subsegmento: finalStructure?.subsegmento || details?.subsegmento || null,
+      detalhes: row.details,
+    };
+  });
 }
 
 function chunk(items, batchSize) {
@@ -196,6 +218,11 @@ async function main() {
           classificacao: product.classificacao,
           nomeSocial: product.nomeSocial,
           fabricante: product.fabricante,
+          departamento: product.departamento,
+          categoria: product.categoria,
+          subcategoria: product.subcategoria,
+          segmento: product.segmento,
+          subsegmento: product.subsegmento,
         })),
       }, null, 2));
       return;
@@ -232,6 +259,11 @@ async function main() {
         classificacao: product.classificacao,
         nomeSocial: product.nomeSocial,
         fabricante: product.fabricante,
+        departamento: product.departamento,
+        categoria: product.categoria,
+        subcategoria: product.subcategoria,
+        segmento: product.segmento,
+        subsegmento: product.subsegmento,
       })),
     }, null, 2));
   } finally {

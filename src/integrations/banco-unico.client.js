@@ -45,6 +45,21 @@ class BancoUnicoClient {
     }
   }
 
+  async searchProductsByEans(eans = []) {
+    try {
+      const response = await axios.post(`${this.baseUrl}/api/products/search/eans`, {
+        eans,
+      }, {
+        timeout: env.bancoUnicoRequestTimeoutMs,
+        headers: this.buildHeaders(),
+      });
+
+      return response.data;
+    } catch (error) {
+      throw this.wrapError("Falha ao consultar EANs na Banco Unico API.", error);
+    }
+  }
+
   wrapError(prefix, error) {
     const status = error?.response?.status;
     const data = error?.response?.data;

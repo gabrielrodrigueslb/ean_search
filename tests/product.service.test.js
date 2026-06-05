@@ -52,6 +52,11 @@ describe("ProductService.buildSnapshot", () => {
     expect(snapshot.nomeSocial).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
     expect(snapshot.descricaoProduto).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
     expect(snapshot.classificacao).toBe("Lencos Umedecidos");
+    expect(snapshot.departamento).toBe("Higiene");
+    expect(snapshot.categoria).toBe("Higiene");
+    expect(snapshot.subcategoria).toBe("Lencos Umedecidos");
+    expect(snapshot.segmento).toBe("Infantil");
+    expect(snapshot.subsegmento).toBe("Uso Diario");
     const detalhes = JSON.parse(snapshot.detalhes);
     expect(detalhes.categoria).toBe("Higiene");
     expect(detalhes.estrutura_final).toEqual(expect.objectContaining({

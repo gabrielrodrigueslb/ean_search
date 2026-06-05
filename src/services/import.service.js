@@ -38,6 +38,27 @@ class ImportService {
     };
   }
 
+  chunk(items = [], batchSize = 100) {
+    const batches = [];
+
+    for (let index = 0; index < items.length; index += batchSize) {
+      batches.push(items.slice(index, index + batchSize));
+    }
+
+    return batches;
+  }
+
+  summarizeEans(items = [], limit = 10) {
+    return items
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .slice(0, limit);
+  }
+
+  sleep(ms = 50) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   isVtexItem(item) {
     return String(item?.fonte || item?.dados_brutos?.origem_dados || "").toLowerCase() === "vtex";
   }
@@ -262,6 +283,23 @@ class ImportService {
     const enrichmentSession = this.enrichmentService.createSession();
     const normalizedFilters = provider.normalizeFilters(filters);
     let state = provider.getInitialState(normalizedFilters);
+    const streamState = {
+      pendingEntries: [],
+      eligibleEntries: [],
+      publishQueue: [],
+      producerFinished: false,
+      triageFinished: false,
+      enrichmentFinished: false,
+      consumerError: null,
+      seenEans: new Set(),
+      stagedTotal: 0,
+      triage: {
+        invalidos: 0,
+        duplicadosNoLote: 0,
+        existentesNoBancoUnico: 0,
+        elegiveisProcessamento: 0,
+      },
+    };
     let totalItens = 0;
     let page = 0;
 
@@ -276,8 +314,32 @@ class ImportService {
       item_concurrency: this.getItemConcurrency(this.extractBatchSizeHint(state)),
     });
 
+    const triagePromise = this.consumeProviderEntryStream({
+      importacaoId,
+      sourceName,
+      streamState,
+      productApi,
+    });
+    const enrichmentPromise = this.processEligibleEntryStream({
+      importacaoId,
+      sourceName,
+      streamState,
+      enrichmentSession,
+      productApi,
+    });
+    const publishPromise = this.processPublishQueueStream({
+      importacaoId,
+      sourceName,
+      streamState,
+      productApi,
+    });
+
     try {
       while (true) {
+        if (streamState.consumerError) {
+          throw streamState.consumerError;
+        }
+
         page += 1;
 
         logger.info(`Buscando pagina de produtos na ${sourceName}`, {
@@ -299,14 +361,24 @@ class ImportService {
         totalItens += result.items.length;
 
         await this.importacaoRepository.updateImportacao(importacaoId, {
-          total_itens: result.total || totalItens,
+          total_itens: totalItens,
         });
 
         if (!result.items.length) {
           break;
         }
+        const stagedBatch = await this.stageProviderItems(importacaoId, result.items);
+        streamState.pendingEntries.push(...stagedBatch);
+        streamState.stagedTotal += stagedBatch.length;
 
-        await this.processBatchItems(importacaoId, result.items, enrichmentSession, productApi);
+        logger.info(`Pagina armazenada em staging para ${sourceName}`, {
+          importacao_id: importacaoId,
+          pagina: page,
+          staged_itens_pagina: stagedBatch.length,
+          staged_itens_total: streamState.stagedTotal,
+          itens_aguardando_consumidor: streamState.pendingEntries.length,
+          sample_eans: this.summarizeEans(stagedBatch.map((entry) => entry.item?.ean)),
+        });
 
         if (!result.hasMore) {
           break;
@@ -315,8 +387,27 @@ class ImportService {
         state = result.nextState;
       }
 
+      streamState.producerFinished = true;
+      await triagePromise;
+      await enrichmentPromise;
+      await publishPromise;
+
       return this.finalizeImportacao(importacaoId, totalItens);
     } catch (error) {
+      streamState.producerFinished = true;
+      streamState.triageFinished = true;
+      streamState.enrichmentFinished = true;
+
+      try {
+        await triagePromise;
+        await enrichmentPromise;
+        await publishPromise;
+      } catch (consumerError) {
+        if (!streamState.consumerError) {
+          streamState.consumerError = consumerError;
+        }
+      }
+
       await this.importacaoRepository.updateImportacao(importacaoId, {
         status: "failed",
         finished_at: new Date(),
@@ -324,21 +415,407 @@ class ImportService {
 
       logger.error(`Falha geral da importacao ${sourceName}`, {
         importacao_id: importacaoId,
-        error: error.message,
+        error: streamState.consumerError?.message || error.message,
       });
 
-      throw error;
+      throw streamState.consumerError || error;
     }
   }
 
-  async processSingleItem(importacaoId, item, enrichmentSession = null, productApi = null) {
-    const importItem = await this.importacaoRepository.createItem({
+  async stageProviderItems(importacaoId, items = []) {
+    const stagedEntries = new Array(items.length);
+    const concurrency = Math.min(
+      items.length || 1,
+      Math.max(1, Math.min(24, this.getItemConcurrency(items.length) * 4)),
+    );
+    let nextIndex = 0;
+
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+
+        if (index >= items.length) {
+          return;
+        }
+
+        const item = items[index];
+        const importItem = await this.importacaoRepository.createItem({
+          importacao_id: importacaoId,
+          ean: String(item.ean || ""),
+          nome_recebido: item.nome_recebido || null,
+          dados_brutos: item.dados_brutos || item,
+          status: "pending",
+        });
+
+        stagedEntries[index] = {
+          item,
+          importItem,
+        };
+      }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+    return stagedEntries.filter(Boolean);
+  }
+
+  async consumeProviderEntryStream({
+    importacaoId,
+    sourceName,
+    streamState,
+    productApi,
+  }) {
+    const batchSize = Math.max(4, env.importProviderTriageBatchSize);
+
+    logger.info(`Consumidor da importacao ${sourceName} iniciado`, {
       importacao_id: importacaoId,
-      ean: String(item.ean || ""),
-      nome_recebido: item.nome_recebido || null,
-      dados_brutos: item.dados_brutos || item,
-      status: "processing",
+      batch_size_triagem: batchSize,
     });
+
+    while (true) {
+      if (!streamState.pendingEntries.length) {
+        if (streamState.producerFinished) {
+          break;
+        }
+
+        await this.sleep(75);
+        continue;
+      }
+
+      const stagedBatch = streamState.pendingEntries.splice(0, batchSize);
+
+      logger.info(`Consumidor retirou lote do staging de ${sourceName}`, {
+        importacao_id: importacaoId,
+        staged_itens_lote: stagedBatch.length,
+        staged_itens_restantes: streamState.pendingEntries.length,
+        sample_eans: this.summarizeEans(stagedBatch.map((entry) => entry.item?.ean)),
+      });
+
+      try {
+        const triageResult = await this.triageStagedProviderEntries({
+          importacaoId,
+          stagedEntries: stagedBatch,
+          productApi,
+          sharedSeenEans: streamState.seenEans,
+          streamStats: streamState.triage,
+        });
+
+        if (triageResult.entriesToProcess.length) {
+          streamState.eligibleEntries.push(...triageResult.entriesToProcess);
+
+          logger.info(`Lote elegivel encaminhado para enriquecimento de ${sourceName}`, {
+            importacao_id: importacaoId,
+            itens_encaminhados: triageResult.entriesToProcess.length,
+            fila_enriquecimento: streamState.eligibleEntries.length,
+            sample_eans: this.summarizeEans(
+              triageResult.entriesToProcess.map((entry) => entry.normalizedEan || entry.item?.ean),
+            ),
+          });
+        }
+      } catch (error) {
+        streamState.consumerError = error;
+        throw error;
+      }
+    }
+
+    streamState.triageFinished = true;
+
+    logger.info(`Consumidor da importacao ${sourceName} finalizado`, {
+      importacao_id: importacaoId,
+      staged_total: streamState.stagedTotal,
+      invalidos: streamState.triage.invalidos,
+      duplicados_no_lote: streamState.triage.duplicadosNoLote,
+      existentes_no_banco_unico: streamState.triage.existentesNoBancoUnico,
+      elegiveis_processamento: streamState.triage.elegiveisProcessamento,
+    });
+  }
+
+  async processEligibleEntryStream({
+    importacaoId,
+    sourceName,
+    streamState,
+    enrichmentSession,
+    productApi,
+  }) {
+    const concurrency = Math.max(1, this.getItemConcurrency(env.importItemConcurrency));
+
+    logger.info(`Processador de enriquecimento da importacao ${sourceName} iniciado`, {
+      importacao_id: importacaoId,
+      workers_enriquecimento: concurrency,
+    });
+
+    const worker = async () => {
+      while (true) {
+        if (!streamState.eligibleEntries.length) {
+          if (streamState.triageFinished) {
+            return;
+          }
+
+          await this.sleep(75);
+          continue;
+        }
+
+        const entry = streamState.eligibleEntries.shift();
+        if (!entry) {
+          continue;
+        }
+
+        const preparation = await this.prepareItemForPublish(
+          importacaoId,
+          entry.item,
+          enrichmentSession,
+          { importItem: entry.importItem },
+        );
+
+        if (preparation.status === "ready") {
+          streamState.publishQueue.push(preparation);
+          continue;
+        }
+
+        await this.incrementImportCounters(importacaoId, preparation.status);
+      }
+    };
+
+    try {
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    } catch (error) {
+      streamState.consumerError = error;
+      throw error;
+    }
+
+    streamState.enrichmentFinished = true;
+
+    logger.info(`Processador de enriquecimento da importacao ${sourceName} finalizado`, {
+      importacao_id: importacaoId,
+      fila_enriquecimento_restante: streamState.eligibleEntries.length,
+      fila_publish_restante: streamState.publishQueue.length,
+      workers_enriquecimento: concurrency,
+    });
+  }
+
+  async processPublishQueueStream({
+    importacaoId,
+    sourceName,
+    streamState,
+    productApi,
+  }) {
+    const batchSize = Math.max(1, env.importPublishBatchSize);
+    const flushMs = Math.max(50, env.importPublishFlushMs);
+    let lastFlushAt = Date.now();
+
+    logger.info(`Publicador em lote da importacao ${sourceName} iniciado`, {
+      importacao_id: importacaoId,
+      batch_size_publish: batchSize,
+      flush_ms_publish: flushMs,
+    });
+
+    while (true) {
+      const queueSize = streamState.publishQueue.length;
+      const shouldFlushBySize = queueSize >= batchSize;
+      const shouldFlushByTime = queueSize > 0 && (Date.now() - lastFlushAt) >= flushMs;
+      const shouldFlushFinal = queueSize > 0 && streamState.enrichmentFinished;
+
+      if (shouldFlushBySize || shouldFlushByTime || shouldFlushFinal) {
+        const batch = streamState.publishQueue.splice(0, batchSize);
+        lastFlushAt = Date.now();
+        await this.publishPreparedEntriesBatch(importacaoId, batch, productApi);
+        continue;
+      }
+
+      if (streamState.enrichmentFinished && queueSize === 0) {
+        break;
+      }
+
+      await this.sleep(75);
+    }
+
+    logger.info(`Publicador em lote da importacao ${sourceName} finalizado`, {
+      importacao_id: importacaoId,
+      fila_publish_restante: streamState.publishQueue.length,
+      batch_size_publish: batchSize,
+    });
+  }
+
+  async processStagedProviderItems({
+    importacaoId,
+    stagedEntries,
+    enrichmentSession,
+    productApi,
+    sharedSeenEans = null,
+    streamStats = null,
+  }) {
+    const triageResult = await this.triageStagedProviderEntries({
+      importacaoId,
+      stagedEntries,
+      productApi,
+      sharedSeenEans,
+      streamStats,
+    });
+
+    await this.processEligibleEntries({
+      importacaoId,
+      entriesToProcess: triageResult.entriesToProcess,
+      enrichmentSession,
+      productApi,
+    });
+  }
+
+  async triageStagedProviderEntries({
+    importacaoId,
+    stagedEntries,
+    productApi,
+    sharedSeenEans = null,
+    streamStats = null,
+  }) {
+    const seenEans = sharedSeenEans || new Set();
+    const uniqueValidEntries = [];
+    const entriesToProcess = [];
+    let invalidCount = 0;
+    let duplicateInProviderCount = 0;
+    let existingInBancoCount = 0;
+
+    for (const entry of stagedEntries) {
+      const validation = validateEAN(entry.item?.ean);
+
+      if (!validation.isValid) {
+        invalidCount += 1;
+        if (streamStats) {
+          streamStats.invalidos += 1;
+        }
+        entriesToProcess.push(entry);
+        continue;
+      }
+
+      entry.normalizedEan = validation.ean;
+
+      if (seenEans.has(validation.ean)) {
+        duplicateInProviderCount += 1;
+        if (streamStats) {
+          streamStats.duplicadosNoLote += 1;
+        }
+        await this.markEntryAsSkipped(entry, {
+          message: `Produto descartado por EAN duplicado no lote do provedor: ${validation.ean}.`,
+          fontesConsultadas: {
+            source: entry.item?.fonte || "importacao",
+            action: "skipped_duplicate_in_provider_batch",
+            ean: validation.ean,
+          },
+        });
+        continue;
+      }
+
+      seenEans.add(validation.ean);
+      uniqueValidEntries.push(entry);
+    }
+
+    const existingEans = await this.lookupExistingBancoUnicoEans(
+      uniqueValidEntries.map((entry) => entry.normalizedEan),
+      productApi,
+    );
+
+    for (const entry of uniqueValidEntries) {
+      if (existingEans.has(entry.normalizedEan)) {
+        existingInBancoCount += 1;
+        if (streamStats) {
+          streamStats.existentesNoBancoUnico += 1;
+        }
+        await this.markEntryAsSkipped(entry, {
+          message: `Produto descartado porque o EAN ${entry.normalizedEan} ja existe no Banco Unico.`,
+          fontesConsultadas: {
+            source: entry.item?.fonte || "importacao",
+            action: "skipped_existing_in_banco_unico",
+            ean: entry.normalizedEan,
+          },
+        });
+        continue;
+      }
+
+      entriesToProcess.push(entry);
+    }
+
+    if (streamStats) {
+      streamStats.elegiveisProcessamento += entriesToProcess.length;
+    }
+
+    logger.info("Resumo da triagem antes do enriquecimento", {
+      importacao_id: importacaoId,
+      staged_total: stagedEntries.length,
+      validos_unicos: uniqueValidEntries.length,
+      invalidos: invalidCount,
+      duplicados_no_lote: duplicateInProviderCount,
+      existentes_no_banco_unico: existingInBancoCount,
+      elegiveis_enriquecimento: entriesToProcess.length,
+      sample_eans_elegiveis: this.summarizeEans(
+        entriesToProcess.map((entry) => entry.normalizedEan || entry.item?.ean),
+      ),
+      acumulado: streamStats ? {
+        invalidos: streamStats.invalidos,
+        duplicados_no_lote: streamStats.duplicadosNoLote,
+        existentes_no_banco_unico: streamStats.existentesNoBancoUnico,
+        elegiveis_processamento: streamStats.elegiveisProcessamento,
+      } : null,
+    });
+
+    return {
+      entriesToProcess,
+      stats: {
+        invalidCount,
+        duplicateInProviderCount,
+        existingInBancoCount,
+      },
+    };
+  }
+
+  async processEligibleEntries({
+    importacaoId,
+    entriesToProcess,
+    enrichmentSession,
+    productApi,
+  }) {
+    const concurrency = this.getItemConcurrency(entriesToProcess.length);
+    let nextIndex = 0;
+
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+
+        if (index >= entriesToProcess.length) {
+          return;
+        }
+
+        const entry = entriesToProcess[index];
+        const status = await this.processSingleItem(
+          importacaoId,
+          entry.item,
+          enrichmentSession,
+          productApi,
+          { importItem: entry.importItem },
+        );
+        await this.incrementImportCounters(importacaoId, status);
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.max(1, concurrency) }, () => worker()),
+    );
+  }
+
+  async prepareItemForPublish(importacaoId, item, enrichmentSession = null, options = {}) {
+    const importItem = options.importItem
+      ? await this.importacaoRepository.updateItem(options.importItem.id, {
+        status: "processing",
+        nome_recebido: item.nome_recebido || options.importItem.nome_recebido || null,
+        dados_brutos: item.dados_brutos || item,
+      })
+      : await this.importacaoRepository.createItem({
+        importacao_id: importacaoId,
+        ean: String(item.ean || ""),
+        nome_recebido: item.nome_recebido || null,
+        dados_brutos: item.dados_brutos || item,
+        status: "processing",
+      });
 
     try {
       const validation = validateEAN(item.ean);
@@ -348,7 +825,7 @@ class ImportService {
           status: "failed",
           mensagem_erro: validation.reason,
         });
-        return "failed";
+        return { status: "failed" };
       }
 
       logger.info("Iniciando enriquecimento externo", {
@@ -407,11 +884,23 @@ class ImportService {
           },
         });
 
-        return "review";
+        return { status: "review" };
       }
 
       const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item);
       const productPayload = this.productService.buildSnapshot(classifiedItem);
+
+      logger.info("Classificacao mercadologica concluida", {
+        importacao_id: importacaoId,
+        item_id: importItem.id,
+        ean: validation.ean,
+        classificacao_origem: classifiedItem?.dados_brutos?.classificacao_mercadologica?.source || null,
+        departamento: productPayload.departamento || null,
+        categoria: productPayload.categoria || null,
+        subcategoria: productPayload.subcategoria || null,
+        segmento: productPayload.segmento || null,
+        subsegmento: productPayload.subsegmento || null,
+      });
 
       await this.storeVtexFallback({
         importacaoId,
@@ -427,59 +916,16 @@ class ImportService {
         },
       });
 
-      try {
-        const result = await this.bancoUnicoService.publishProduct(productPayload, productApi || {});
-
-        await this.importacaoRepository.updateItem(importItem.id, {
-          status: "enriched",
-          nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
-          fontes_consultadas: {
-            source: item.fonte || "importacao",
-            action: "published",
-            destination: "banco_unico_api",
-            api_response: result,
-            ...enriched.fontes_consultadas,
-          },
-        });
-
-        return "enriched";
-      } catch (publishError) {
-        const apiError = this.buildApiErrorDetails(publishError);
-
-        await this.importacaoRepository.createProdutoFallbackApi({
-          importacao_id: importacaoId,
-          item_importacao_id: importItem.id,
-          ean: validation.ean,
-          payload: productPayload,
-          api_config: productApi || {},
-          motivo_falha: publishError.message,
-          resposta_erro: apiError,
-          status: "pending_replay",
-        });
-
-        await this.importacaoRepository.updateItem(importItem.id, {
-          status: "enriched",
-          nome_recebido: enriched.item.nome_recebido || importItem.nome_recebido,
-          mensagem_erro: `Fallback Postgres acionado apos falha na API: ${publishError.message}`,
-          fontes_consultadas: {
-            source: item.fonte || "importacao",
-            action: "stored_fallback",
-            destination: "postgres_fallback_api",
-            api_error: apiError,
-            ...enriched.fontes_consultadas,
-          },
-        });
-
-        logger.error("Falha ao publicar na Banco Unico API; produto salvo em fallback no Postgres", {
-          importacao_id: importacaoId,
-          item_id: importItem.id,
-          ean: validation.ean,
-          error: publishError.message,
-          fallback: "produtos_fallback_api",
-        });
-
-        return "enriched";
-      }
+      return {
+        status: "ready",
+        importacaoId,
+        importItem,
+        item,
+        validation,
+        enriched,
+        classifiedItem,
+        productPayload,
+      };
     } catch (error) {
       await this.importacaoRepository.updateItem(importItem.id, {
         status: "failed",
@@ -493,8 +939,191 @@ class ImportService {
         error: error.message,
       });
 
-      return "failed";
+      return { status: "failed" };
     }
+  }
+
+  async publishPreparedEntriesBatch(
+    importacaoId,
+    preparedEntries = [],
+    productApi = null,
+    options = {},
+  ) {
+    if (!preparedEntries.length) {
+      return;
+    }
+
+    const shouldIncrementCounters = options.incrementCounters !== false;
+
+    logger.info("Publicando lote de produtos no Banco Unico", {
+      importacao_id: importacaoId,
+      itens_no_lote: preparedEntries.length,
+      sample_eans: this.summarizeEans(preparedEntries.map((entry) => entry.validation?.ean)),
+    });
+
+    try {
+      const result = preparedEntries.length === 1
+        ? await this.bancoUnicoService.publishProduct(preparedEntries[0].productPayload, productApi || {})
+        : await this.bancoUnicoService.publishProducts(
+          preparedEntries.map((entry) => entry.productPayload),
+          productApi || {},
+        );
+
+      await Promise.all(preparedEntries.map(async (entry) => {
+        logger.info("Produto publicado no Banco Unico com sucesso", {
+          importacao_id: importacaoId,
+          item_id: entry.importItem.id,
+          ean: entry.validation.ean,
+        });
+
+        await this.importacaoRepository.updateItem(entry.importItem.id, {
+          status: "enriched",
+          nome_recebido: entry.enriched.item.nome_recebido || entry.importItem.nome_recebido,
+          fontes_consultadas: {
+            source: entry.item.fonte || "importacao",
+            action: "published",
+            destination: "banco_unico_api",
+            api_response: result,
+            ...entry.enriched.fontes_consultadas,
+          },
+        });
+
+        if (shouldIncrementCounters) {
+          await this.incrementImportCounters(importacaoId, "enriched");
+        }
+      }));
+    } catch (publishError) {
+      const apiError = this.buildApiErrorDetails(publishError);
+
+      await Promise.all(preparedEntries.map(async (entry) => {
+        await this.importacaoRepository.createProdutoFallbackApi({
+          importacao_id: importacaoId,
+          item_importacao_id: entry.importItem.id,
+          ean: entry.validation.ean,
+          payload: entry.productPayload,
+          api_config: productApi || {},
+          motivo_falha: publishError.message,
+          resposta_erro: apiError,
+          status: "pending_replay",
+        });
+
+        await this.importacaoRepository.updateItem(entry.importItem.id, {
+          status: "enriched",
+          nome_recebido: entry.enriched.item.nome_recebido || entry.importItem.nome_recebido,
+          mensagem_erro: `Fallback Postgres acionado apos falha na API: ${publishError.message}`,
+          fontes_consultadas: {
+            source: entry.item.fonte || "importacao",
+            action: "stored_fallback",
+            destination: "postgres_fallback_api",
+            api_error: apiError,
+            ...entry.enriched.fontes_consultadas,
+          },
+        });
+
+        logger.error("Falha ao publicar na Banco Unico API; produto salvo em fallback no Postgres", {
+          importacao_id: importacaoId,
+          item_id: entry.importItem.id,
+          ean: entry.validation.ean,
+          error: publishError.message,
+          fallback: "produtos_fallback_api",
+        });
+
+        if (shouldIncrementCounters) {
+          await this.incrementImportCounters(importacaoId, "enriched");
+        }
+      }));
+    }
+  }
+
+  async lookupExistingBancoUnicoEans(eans = [], productApi = {}) {
+    const normalizedEans = [...new Set(
+      eans
+        .map((ean) => String(ean || "").trim())
+        .filter(Boolean),
+    )];
+
+    if (!normalizedEans.length) {
+      return new Set();
+    }
+
+    const existingEans = new Set();
+    const batches = this.chunk(normalizedEans, env.bancoUnicoLookupBatchSize);
+
+    logger.info("Iniciando checagem de existencia no Banco Unico", {
+      total_eans_consulta: normalizedEans.length,
+      batches: batches.length,
+      batch_size: env.bancoUnicoLookupBatchSize,
+      sample_eans: this.summarizeEans(normalizedEans),
+    });
+
+    for (const [index, batch] of batches.entries()) {
+      logger.info("Consultando batch de EANs no Banco Unico", {
+        batch_index: index + 1,
+        batch_total: batches.length,
+        eans_no_batch: batch.length,
+        sample_eans: this.summarizeEans(batch),
+      });
+
+      const response = await this.bancoUnicoService.searchProductsByEans(batch, productApi || {});
+      const products = Array.isArray(response?.products) ? response.products : [];
+
+      logger.info("Resultado do batch consultado no Banco Unico", {
+        batch_index: index + 1,
+        encontrados: products.length,
+        faltantes: batch.length - products.length,
+        found_eans_sample: this.summarizeEans(products.map((product) => product?.ean)),
+      });
+
+      for (const product of products) {
+        const ean = String(product?.ean || "").trim();
+        if (ean) {
+          existingEans.add(ean);
+        }
+      }
+    }
+
+    logger.info("Checagem de existencia no Banco Unico concluida", {
+      total_consultados: normalizedEans.length,
+      total_existentes: existingEans.size,
+      total_ausentes: normalizedEans.length - existingEans.size,
+      existing_eans_sample: this.summarizeEans(Array.from(existingEans)),
+    });
+
+    return existingEans;
+  }
+
+  async markEntryAsSkipped(entry, { message, fontesConsultadas }) {
+    await this.importacaoRepository.updateItem(entry.importItem.id, {
+      status: "enriched",
+      nome_recebido: entry.item?.nome_recebido || entry.importItem?.nome_recebido || null,
+      mensagem_erro: message,
+      fontes_consultadas: fontesConsultadas,
+    });
+
+    await this.importacaoRepository.incrementImportacaoCounters(entry.importItem.importacao_id, {
+      itens_processados: 1,
+    });
+  }
+
+  async processSingleItem(importacaoId, item, enrichmentSession = null, productApi = null, options = {}) {
+    const preparation = await this.prepareItemForPublish(
+      importacaoId,
+      item,
+      enrichmentSession,
+      options,
+    );
+
+    if (preparation.status !== "ready") {
+      return preparation.status;
+    }
+
+    await this.publishPreparedEntriesBatch(
+      importacaoId,
+      [preparation],
+      productApi,
+      { incrementCounters: false },
+    );
+    return "enriched";
   }
 
   async incrementImportCounters(importacaoId, status) {

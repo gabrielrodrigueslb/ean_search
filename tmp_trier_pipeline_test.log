@@ -1,0 +1,297 @@
+◇ injected env (8) from .env // tip: ⌘ override existing { override: true }
+[2026-06-05T20:03:13.225Z] [INFO] Servidor rodando {"url":"http://localhost:4030"}
+[2026-06-05T20:03:15.952Z] [INFO] Requisicao recebida {"method":"GET","path":"/health"}
+[2026-06-05T20:03:15.993Z] [INFO] Requisicao finalizada {"method":"GET","path":"/health","status":200,"duration_ms":41}
+[2026-06-05T20:03:28.560Z] [INFO] Requisicao recebida {"method":"GET","path":"/health"}
+[2026-06-05T20:03:28.565Z] [INFO] Requisicao finalizada {"method":"GET","path":"/health","status":200,"duration_ms":5}
+[2026-06-05T20:03:43.891Z] [INFO] Requisicao recebida {"method":"POST","path":"/imports/trier"}
+[2026-06-05T20:03:44.206Z] [INFO] Importacao trier criada e aguardando processamento {"importacao_id":58,"filtros":{"codigo":null,"codigoBarras":"7897595900838","nomeProduto":null,"primeiroRegistro":0,"quantidadeRegistros":50,"ativo":null,"integracaoEcommerce":null,"processaCustoMedio":false}}
+[2026-06-05T20:03:44.207Z] [INFO] Importacao enfileirada {"importacao_id":58,"fila_pendente":1,"jobs_ativos":0}
+[2026-06-05T20:03:44.208Z] [INFO] Importacao Trier aceita para processamento {"importacao_id":58,"status":"pending","ean":"7897595900838"}
+[2026-06-05T20:03:44.209Z] [INFO] Requisicao finalizada {"method":"POST","path":"/imports/trier","status":202,"duration_ms":318}
+[2026-06-05T20:03:44.210Z] [INFO] Importacao retirada da fila para processamento {"importacao_id":58,"jobs_ativos":1,"fila_restante":0}
+[2026-06-05T20:03:44.263Z] [INFO] Processamento da importacao trier iniciado {"importacao_id":58,"quantidade_registros":50,"primeiro_registro":0,"item_concurrency":8}
+[2026-06-05T20:03:44.264Z] [INFO] Consumidor da importacao trier iniciado {"importacao_id":58,"batch_size_triagem":4}
+[2026-06-05T20:03:44.265Z] [INFO] Buscando pagina de produtos na trier {"importacao_id":58,"pagina":1,"primeiro_registro":0,"quantidade_registros":50,"ativo":null,"integracao_ecommerce":null,"processa_custo_medio":false}
+[2026-06-05T20:03:44.669Z] [INFO] Pagina retornada pela trier {"importacao_id":58,"pagina":1,"endpoint":"/rest/integracao/produto/obter-v1","quantidade_itens":1,"total":1}
+[2026-06-05T20:03:44.808Z] [INFO] Pagina armazenada em staging para trier {"importacao_id":58,"pagina":1,"staged_itens_pagina":1,"staged_itens_total":1,"itens_aguardando_consumidor":1,"sample_eans":["7897595900838"]}
+[2026-06-05T20:03:44.868Z] [INFO] Consumidor retirou lote do staging de trier {"importacao_id":58,"staged_itens_lote":1,"staged_itens_restantes":0,"sample_eans":["7897595900838"]}
+[2026-06-05T20:03:44.870Z] [INFO] Iniciando checagem de existencia no Banco Unico {"total_eans_consulta":1,"batches":1,"batch_size":100,"sample_eans":["7897595900838"]}
+[2026-06-05T20:03:44.871Z] [INFO] Consultando batch de EANs no Banco Unico {"batch_index":1,"batch_total":1,"eans_no_batch":1,"sample_eans":["7897595900838"]}
+[2026-06-05T20:03:45.008Z] [INFO] Resultado do batch consultado no Banco Unico {"batch_index":1,"encontrados":0,"faltantes":1,"found_eans_sample":[]}
+[2026-06-05T20:03:45.010Z] [INFO] Checagem de existencia no Banco Unico concluida {"total_consultados":1,"total_existentes":0,"total_ausentes":1,"existing_eans_sample":[]}
+[2026-06-05T20:03:45.010Z] [INFO] Resumo da triagem antes do enriquecimento {"importacao_id":58,"staged_total":1,"validos_unicos":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_enriquecimento":1,"sample_eans_elegiveis":["7897595900838"],"acumulado":{"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}}
+[2026-06-05T20:03:45.065Z] [INFO] Iniciando enriquecimento externo {"importacao_id":58,"item_id":1036766,"ean":"7897595900838"}
+[2026-06-05T20:03:49.620Z] [INFO] Enriquecimento concluido {"importacao_id":58,"item_id":1036766,"ean":"7897595900838","enriched":false,"requires_approval":true,"fontes_consultadas":{"convertize_busca":false,"convertize_busca_error":null,"convertize_detalhe":false,"farmaindex_busca":false,"farmaindex_busca_error":null,"farmaindex_detalhe":false,"drogasil_busca":false,"drogasil_busca_error":null,"drogasil_detalhe":false,"cache_hit":false,"encontrado":false}}
+[2026-06-05T20:03:49.785Z] [INFO] Consumidor da importacao trier finalizado {"importacao_id":58,"staged_total":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}
+[2026-06-05T20:03:50.081Z] [INFO] Processamento da importacao finalizado {"importacao_id":58,"status":"completed","itens_processados":1,"itens_sucesso":0,"itens_falha":0,"itens_revisao":1}
+[2026-06-05T20:03:50.115Z] [INFO] Job da fila finalizado {"importacao_id":58,"jobs_ativos":0,"fila_restante":0}
+[2026-06-05T20:03:52.988Z] [INFO] Requisicao recebida {"method":"GET","path":"/imports/58"}
+[2026-06-05T20:03:53.104Z] [INFO] Requisicao finalizada {"method":"GET","path":"/imports/58","status":200,"duration_ms":116}
+[2026-06-05T20:04:35.693Z] [INFO] Requisicao recebida {"method":"POST","path":"/imports/trier"}
+[2026-06-05T20:04:35.745Z] [INFO] Importacao trier criada e aguardando processamento {"importacao_id":59,"filtros":{"codigo":null,"codigoBarras":"7896181905882","nomeProduto":null,"primeiroRegistro":0,"quantidadeRegistros":50,"ativo":null,"integracaoEcommerce":null,"processaCustoMedio":false}}
+[2026-06-05T20:04:35.746Z] [INFO] Importacao enfileirada {"importacao_id":59,"fila_pendente":1,"jobs_ativos":0}
+[2026-06-05T20:04:35.746Z] [INFO] Importacao Trier aceita para processamento {"importacao_id":59,"status":"pending","ean":"7896181905882"}
+[2026-06-05T20:04:35.748Z] [INFO] Requisicao finalizada {"method":"POST","path":"/imports/trier","status":202,"duration_ms":55}
+[2026-06-05T20:04:35.748Z] [INFO] Importacao retirada da fila para processamento {"importacao_id":59,"jobs_ativos":1,"fila_restante":0}
+[2026-06-05T20:04:35.774Z] [INFO] Processamento da importacao trier iniciado {"importacao_id":59,"quantidade_registros":50,"primeiro_registro":0,"item_concurrency":8}
+[2026-06-05T20:04:35.775Z] [INFO] Consumidor da importacao trier iniciado {"importacao_id":59,"batch_size_triagem":4}
+[2026-06-05T20:04:35.776Z] [INFO] Buscando pagina de produtos na trier {"importacao_id":59,"pagina":1,"primeiro_registro":0,"quantidade_registros":50,"ativo":null,"integracao_ecommerce":null,"processa_custo_medio":false}
+[2026-06-05T20:04:36.078Z] [INFO] Pagina retornada pela trier {"importacao_id":59,"pagina":1,"endpoint":"/rest/integracao/produto/obter-v1","quantidade_itens":1,"total":1}
+[2026-06-05T20:04:36.183Z] [INFO] Pagina armazenada em staging para trier {"importacao_id":59,"pagina":1,"staged_itens_pagina":1,"staged_itens_total":1,"itens_aguardando_consumidor":1,"sample_eans":["7896181905882"]}
+[2026-06-05T20:04:36.217Z] [INFO] Consumidor retirou lote do staging de trier {"importacao_id":59,"staged_itens_lote":1,"staged_itens_restantes":0,"sample_eans":["7896181905882"]}
+[2026-06-05T20:04:36.217Z] [INFO] Iniciando checagem de existencia no Banco Unico {"total_eans_consulta":1,"batches":1,"batch_size":100,"sample_eans":["7896181905882"]}
+[2026-06-05T20:04:36.218Z] [INFO] Consultando batch de EANs no Banco Unico {"batch_index":1,"batch_total":1,"eans_no_batch":1,"sample_eans":["7896181905882"]}
+[2026-06-05T20:04:36.326Z] [INFO] Resultado do batch consultado no Banco Unico {"batch_index":1,"encontrados":0,"faltantes":1,"found_eans_sample":[]}
+[2026-06-05T20:04:36.328Z] [INFO] Checagem de existencia no Banco Unico concluida {"total_consultados":1,"total_existentes":0,"total_ausentes":1,"existing_eans_sample":[]}
+[2026-06-05T20:04:36.328Z] [INFO] Resumo da triagem antes do enriquecimento {"importacao_id":59,"staged_total":1,"validos_unicos":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_enriquecimento":1,"sample_eans_elegiveis":["7896181905882"],"acumulado":{"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}}
+[2026-06-05T20:04:36.357Z] [INFO] Iniciando enriquecimento externo {"importacao_id":59,"item_id":1036767,"ean":"7896181905882"}
+[2026-06-05T20:04:42.773Z] [INFO] Enriquecimento concluido {"importacao_id":59,"item_id":1036767,"ean":"7896181905882","enriched":false,"requires_approval":true,"fontes_consultadas":{"convertize_busca":false,"convertize_busca_error":null,"convertize_detalhe":false,"farmaindex_busca":false,"farmaindex_busca_error":null,"farmaindex_detalhe":false,"drogasil_busca":false,"drogasil_busca_error":null,"drogasil_detalhe":false,"cache_hit":false,"encontrado":false}}
+[2026-06-05T20:04:42.885Z] [INFO] Consumidor da importacao trier finalizado {"importacao_id":59,"staged_total":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}
+[2026-06-05T20:04:43.033Z] [INFO] Processamento da importacao finalizado {"importacao_id":59,"status":"completed","itens_processados":1,"itens_sucesso":0,"itens_falha":0,"itens_revisao":1}
+[2026-06-05T20:04:43.035Z] [INFO] Job da fila finalizado {"importacao_id":59,"jobs_ativos":0,"fila_restante":0}
+[2026-06-05T20:04:43.424Z] [INFO] Requisicao recebida {"method":"GET","path":"/imports/59"}
+[2026-06-05T20:04:43.586Z] [INFO] Requisicao finalizada {"method":"GET","path":"/imports/59","status":200,"duration_ms":162}
+[2026-06-05T20:04:57.107Z] [INFO] Requisicao recebida {"method":"POST","path":"/imports/trier"}
+[2026-06-05T20:04:57.154Z] [INFO] Importacao trier criada e aguardando processamento {"importacao_id":60,"filtros":{"codigo":null,"codigoBarras":"7896916720254","nomeProduto":null,"primeiroRegistro":0,"quantidadeRegistros":50,"ativo":null,"integracaoEcommerce":null,"processaCustoMedio":false}}
+[2026-06-05T20:04:57.155Z] [INFO] Importacao enfileirada {"importacao_id":60,"fila_pendente":1,"jobs_ativos":0}
+[2026-06-05T20:04:57.156Z] [INFO] Importacao Trier aceita para processamento {"importacao_id":60,"status":"pending","ean":"7896916720254"}
+[2026-06-05T20:04:57.159Z] [INFO] Requisicao finalizada {"method":"POST","path":"/imports/trier","status":202,"duration_ms":52}
+[2026-06-05T20:04:57.160Z] [INFO] Importacao retirada da fila para processamento {"importacao_id":60,"jobs_ativos":1,"fila_restante":0}
+[2026-06-05T20:04:57.184Z] [INFO] Processamento da importacao trier iniciado {"importacao_id":60,"quantidade_registros":50,"primeiro_registro":0,"item_concurrency":8}
+[2026-06-05T20:04:57.185Z] [INFO] Consumidor da importacao trier iniciado {"importacao_id":60,"batch_size_triagem":4}
+[2026-06-05T20:04:57.186Z] [INFO] Buscando pagina de produtos na trier {"importacao_id":60,"pagina":1,"primeiro_registro":0,"quantidade_registros":50,"ativo":null,"integracao_ecommerce":null,"processa_custo_medio":false}
+[2026-06-05T20:04:57.479Z] [INFO] Pagina retornada pela trier {"importacao_id":60,"pagina":1,"endpoint":"/rest/integracao/produto/obter-v1","quantidade_itens":1,"total":1}
+[2026-06-05T20:04:57.543Z] [INFO] Pagina armazenada em staging para trier {"importacao_id":60,"pagina":1,"staged_itens_pagina":1,"staged_itens_total":1,"itens_aguardando_consumidor":1,"sample_eans":["7896916720254"]}
+[2026-06-05T20:04:57.600Z] [INFO] Consumidor retirou lote do staging de trier {"importacao_id":60,"staged_itens_lote":1,"staged_itens_restantes":0,"sample_eans":["7896916720254"]}
+[2026-06-05T20:04:57.601Z] [INFO] Iniciando checagem de existencia no Banco Unico {"total_eans_consulta":1,"batches":1,"batch_size":100,"sample_eans":["7896916720254"]}
+[2026-06-05T20:04:57.602Z] [INFO] Consultando batch de EANs no Banco Unico {"batch_index":1,"batch_total":1,"eans_no_batch":1,"sample_eans":["7896916720254"]}
+[2026-06-05T20:04:57.708Z] [INFO] Resultado do batch consultado no Banco Unico {"batch_index":1,"encontrados":0,"faltantes":1,"found_eans_sample":[]}
+[2026-06-05T20:04:57.709Z] [INFO] Checagem de existencia no Banco Unico concluida {"total_consultados":1,"total_existentes":0,"total_ausentes":1,"existing_eans_sample":[]}
+[2026-06-05T20:04:57.710Z] [INFO] Resumo da triagem antes do enriquecimento {"importacao_id":60,"staged_total":1,"validos_unicos":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_enriquecimento":1,"sample_eans_elegiveis":["7896916720254"],"acumulado":{"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}}
+[2026-06-05T20:04:57.737Z] [INFO] Iniciando enriquecimento externo {"importacao_id":60,"item_id":1036768,"ean":"7896916720254"}
+[2026-06-05T20:05:01.336Z] [INFO] Enriquecimento concluido {"importacao_id":60,"item_id":1036768,"ean":"7896916720254","enriched":false,"requires_approval":true,"fontes_consultadas":{"convertize_busca":false,"convertize_busca_error":null,"convertize_detalhe":false,"farmaindex_busca":false,"farmaindex_busca_error":null,"farmaindex_detalhe":false,"drogasil_busca":false,"drogasil_busca_error":null,"drogasil_detalhe":false,"cache_hit":false,"encontrado":false}}
+[2026-06-05T20:05:01.416Z] [INFO] Consumidor da importacao trier finalizado {"importacao_id":60,"staged_total":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}
+[2026-06-05T20:05:01.553Z] [INFO] Processamento da importacao finalizado {"importacao_id":60,"status":"completed","itens_processados":1,"itens_sucesso":0,"itens_falha":0,"itens_revisao":1}
+[2026-06-05T20:05:01.554Z] [INFO] Job da fila finalizado {"importacao_id":60,"jobs_ativos":0,"fila_restante":0}
+[2026-06-05T20:05:04.904Z] [INFO] Requisicao recebida {"method":"GET","path":"/imports/60"}
+[2026-06-05T20:05:05.020Z] [INFO] Requisicao finalizada {"method":"GET","path":"/imports/60","status":200,"duration_ms":115}
+[2026-06-05T20:05:35.954Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:05:35.989Z] [INFO] Lookup enfileirado {"job_id":1,"ean":"7897595900838","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.990Z] [INFO] Lookup enfileirado {"job_id":2,"ean":"7896916710507","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.990Z] [INFO] Lookup enfileirado {"job_id":3,"ean":"7896181905882","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.990Z] [INFO] Lookup enfileirado {"job_id":4,"ean":"7896916710477","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.991Z] [INFO] Lookup enfileirado {"job_id":5,"ean":"7896916710538","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.991Z] [INFO] Lookup enfileirado {"job_id":6,"ean":"7896916720254","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.991Z] [INFO] Lookup enfileirado {"job_id":7,"ean":"7896916720261","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.992Z] [INFO] Lookup enfileirado {"job_id":8,"ean":"7896916720612","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.992Z] [INFO] Lookup enfileirado {"job_id":9,"ean":"7896916720308","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.993Z] [INFO] Lookup enfileirado {"job_id":10,"ean":"7896382706066","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:05:35.994Z] [INFO] Lookup retirado da fila para processamento {"job_id":1,"ean":"7897595900838","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:05:35.994Z] [INFO] Lookup retirado da fila para processamento {"job_id":2,"ean":"7896916710507","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:05:35.994Z] [INFO] Lookup retirado da fila para processamento {"job_id":3,"ean":"7896181905882","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:05:35.995Z] [INFO] Lookup retirado da fila para processamento {"job_id":4,"ean":"7896916710477","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:05:35.995Z] [INFO] Lookup retirado da fila para processamento {"job_id":5,"ean":"7896916710538","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:05:35.995Z] [INFO] Lookup retirado da fila para processamento {"job_id":6,"ean":"7896916720254","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:05:35.996Z] [INFO] Lookup retirado da fila para processamento {"job_id":7,"ean":"7896916720261","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:05:35.996Z] [INFO] Lookup retirado da fila para processamento {"job_id":8,"ean":"7896916720612","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:05:35.997Z] [INFO] Lookup retirado da fila para processamento {"job_id":9,"ean":"7896916720308","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:05:35.997Z] [INFO] Lookup retirado da fila para processamento {"job_id":10,"ean":"7896382706066","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:37.140Z] [INFO] Job de lookup finalizado {"job_id":3,"ean":"7896181905882","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:37.186Z] [INFO] Job de lookup finalizado {"job_id":6,"ean":"7896916720254","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:37.931Z] [INFO] Job de lookup finalizado {"job_id":1,"ean":"7897595900838","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.168Z] [INFO] Job de lookup finalizado {"job_id":2,"ean":"7896916710507","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.184Z] [INFO] Job de lookup finalizado {"job_id":5,"ean":"7896916710538","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.187Z] [INFO] Job de lookup finalizado {"job_id":7,"ean":"7896916720261","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.271Z] [INFO] Job de lookup finalizado {"job_id":4,"ean":"7896916710477","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.605Z] [INFO] Job de lookup finalizado {"job_id":10,"ean":"7896382706066","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.641Z] [INFO] Job de lookup finalizado {"job_id":9,"ean":"7896916720308","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.642Z] [INFO] Job de lookup finalizado {"job_id":8,"ean":"7896916720612","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:05:40.643Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":4689}
+[2026-06-05T20:06:28.301Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:06:28.303Z] [INFO] Lookup enfileirado {"job_id":11,"ean":"7897595900838","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.304Z] [INFO] Lookup enfileirado {"job_id":12,"ean":"7896916710507","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.305Z] [INFO] Lookup enfileirado {"job_id":13,"ean":"7896181905882","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.305Z] [INFO] Lookup enfileirado {"job_id":14,"ean":"7896916710477","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.306Z] [INFO] Lookup enfileirado {"job_id":15,"ean":"7896916710538","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.307Z] [INFO] Lookup enfileirado {"job_id":16,"ean":"7896916720254","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.307Z] [INFO] Lookup enfileirado {"job_id":17,"ean":"7896916720261","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.308Z] [INFO] Lookup enfileirado {"job_id":18,"ean":"7896916720612","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.308Z] [INFO] Lookup enfileirado {"job_id":19,"ean":"7896916720308","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.309Z] [INFO] Lookup enfileirado {"job_id":20,"ean":"7896382706066","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:28.309Z] [INFO] Lookup retirado da fila para processamento {"job_id":11,"ean":"7897595900838","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:06:28.310Z] [INFO] Lookup retirado da fila para processamento {"job_id":12,"ean":"7896916710507","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:06:28.310Z] [INFO] Lookup retirado da fila para processamento {"job_id":13,"ean":"7896181905882","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:06:28.310Z] [INFO] Lookup retirado da fila para processamento {"job_id":14,"ean":"7896916710477","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:06:28.311Z] [INFO] Lookup retirado da fila para processamento {"job_id":15,"ean":"7896916710538","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:06:28.311Z] [INFO] Lookup retirado da fila para processamento {"job_id":16,"ean":"7896916720254","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:06:28.312Z] [INFO] Lookup retirado da fila para processamento {"job_id":17,"ean":"7896916720261","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:06:28.312Z] [INFO] Lookup retirado da fila para processamento {"job_id":18,"ean":"7896916720612","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:06:28.312Z] [INFO] Lookup retirado da fila para processamento {"job_id":19,"ean":"7896916720308","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:06:28.313Z] [INFO] Lookup retirado da fila para processamento {"job_id":20,"ean":"7896382706066","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.443Z] [INFO] Job de lookup finalizado {"job_id":17,"ean":"7896916720261","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.498Z] [INFO] Job de lookup finalizado {"job_id":16,"ean":"7896916720254","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.614Z] [INFO] Job de lookup finalizado {"job_id":13,"ean":"7896181905882","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.640Z] [INFO] Job de lookup finalizado {"job_id":20,"ean":"7896382706066","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.649Z] [INFO] Job de lookup finalizado {"job_id":15,"ean":"7896916710538","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.652Z] [INFO] Job de lookup finalizado {"job_id":14,"ean":"7896916710477","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.653Z] [INFO] Job de lookup finalizado {"job_id":18,"ean":"7896916720612","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.655Z] [INFO] Job de lookup finalizado {"job_id":19,"ean":"7896916720308","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.806Z] [INFO] Job de lookup finalizado {"job_id":11,"ean":"7897595900838","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.876Z] [INFO] Job de lookup finalizado {"job_id":12,"ean":"7896916710507","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.877Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":1576}
+[2026-06-05T20:06:29.899Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:06:29.901Z] [INFO] Lookup enfileirado {"job_id":21,"ean":"7896009162114","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.902Z] [INFO] Lookup enfileirado {"job_id":22,"ean":"7896009162121","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.902Z] [INFO] Lookup enfileirado {"job_id":23,"ean":"7896075706717","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.903Z] [INFO] Lookup enfileirado {"job_id":24,"ean":"7898096577338","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.904Z] [INFO] Lookup enfileirado {"job_id":25,"ean":"7898096577345","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.904Z] [INFO] Lookup enfileirado {"job_id":26,"ean":"7891024111802","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.904Z] [INFO] Lookup enfileirado {"job_id":27,"ean":"7891024114605","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.905Z] [INFO] Lookup enfileirado {"job_id":28,"ean":"7891024114704","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.905Z] [INFO] Lookup enfileirado {"job_id":29,"ean":"7896015516260","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.906Z] [INFO] Lookup enfileirado {"job_id":30,"ean":"7790350762644","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:29.906Z] [INFO] Lookup retirado da fila para processamento {"job_id":21,"ean":"7896009162114","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:06:29.907Z] [INFO] Lookup retirado da fila para processamento {"job_id":22,"ean":"7896009162121","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:06:29.907Z] [INFO] Lookup retirado da fila para processamento {"job_id":23,"ean":"7896075706717","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:06:29.907Z] [INFO] Lookup retirado da fila para processamento {"job_id":24,"ean":"7898096577338","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:06:29.908Z] [INFO] Lookup retirado da fila para processamento {"job_id":25,"ean":"7898096577345","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:06:29.908Z] [INFO] Lookup retirado da fila para processamento {"job_id":26,"ean":"7891024111802","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:06:29.908Z] [INFO] Lookup retirado da fila para processamento {"job_id":27,"ean":"7891024114605","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:06:29.909Z] [INFO] Lookup retirado da fila para processamento {"job_id":28,"ean":"7891024114704","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:06:29.909Z] [INFO] Lookup retirado da fila para processamento {"job_id":29,"ean":"7896015516260","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:06:29.909Z] [INFO] Lookup retirado da fila para processamento {"job_id":30,"ean":"7790350762644","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:32.001Z] [INFO] Job de lookup finalizado {"job_id":23,"ean":"7896075706717","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:32.213Z] [INFO] Job de lookup finalizado {"job_id":27,"ean":"7891024114605","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:32.477Z] [INFO] Job de lookup finalizado {"job_id":24,"ean":"7898096577338","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:33.224Z] [INFO] Job de lookup finalizado {"job_id":29,"ean":"7896015516260","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:33.317Z] [INFO] Job de lookup finalizado {"job_id":21,"ean":"7896009162114","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:33.593Z] [INFO] Job de lookup finalizado {"job_id":30,"ean":"7790350762644","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:34.636Z] [INFO] Job de lookup finalizado {"job_id":25,"ean":"7898096577345","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.007Z] [INFO] Job de lookup finalizado {"job_id":26,"ean":"7891024111802","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.210Z] [INFO] Job de lookup finalizado {"job_id":28,"ean":"7891024114704","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.304Z] [INFO] Job de lookup finalizado {"job_id":22,"ean":"7896009162121","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.306Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":5407}
+[2026-06-05T20:06:35.318Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:06:35.320Z] [INFO] Lookup enfileirado {"job_id":31,"ean":"7790350762620","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.321Z] [INFO] Lookup enfileirado {"job_id":32,"ean":"7891040108459","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.321Z] [INFO] Lookup enfileirado {"job_id":33,"ean":"7891045007719","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.322Z] [INFO] Lookup enfileirado {"job_id":34,"ean":"7898422741648","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.323Z] [INFO] Lookup enfileirado {"job_id":35,"ean":"7896398660314","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.324Z] [INFO] Lookup enfileirado {"job_id":36,"ean":"7896398660246","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.325Z] [INFO] Lookup enfileirado {"job_id":37,"ean":"7891350027013","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.325Z] [INFO] Lookup enfileirado {"job_id":38,"ean":"7891350027006","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.325Z] [INFO] Lookup enfileirado {"job_id":39,"ean":"7896009159855","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.326Z] [INFO] Lookup enfileirado {"job_id":40,"ean":"7896398660208","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:35.326Z] [INFO] Lookup retirado da fila para processamento {"job_id":31,"ean":"7790350762620","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:06:35.327Z] [INFO] Lookup retirado da fila para processamento {"job_id":32,"ean":"7891040108459","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:06:35.327Z] [INFO] Lookup retirado da fila para processamento {"job_id":33,"ean":"7891045007719","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:06:35.327Z] [INFO] Lookup retirado da fila para processamento {"job_id":34,"ean":"7898422741648","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:06:35.328Z] [INFO] Lookup retirado da fila para processamento {"job_id":35,"ean":"7896398660314","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:06:35.328Z] [INFO] Lookup retirado da fila para processamento {"job_id":36,"ean":"7896398660246","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:06:35.328Z] [INFO] Lookup retirado da fila para processamento {"job_id":37,"ean":"7891350027013","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:06:35.329Z] [INFO] Lookup retirado da fila para processamento {"job_id":38,"ean":"7891350027006","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:06:35.329Z] [INFO] Lookup retirado da fila para processamento {"job_id":39,"ean":"7896009159855","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:06:35.330Z] [INFO] Lookup retirado da fila para processamento {"job_id":40,"ean":"7896398660208","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:38.506Z] [INFO] Job de lookup finalizado {"job_id":37,"ean":"7891350027013","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:38.583Z] [INFO] Job de lookup finalizado {"job_id":38,"ean":"7891350027006","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:38.714Z] [INFO] Job de lookup finalizado {"job_id":33,"ean":"7891045007719","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:39.370Z] [INFO] Job de lookup finalizado {"job_id":32,"ean":"7891040108459","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:39.499Z] [INFO] Job de lookup finalizado {"job_id":35,"ean":"7896398660314","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:39.678Z] [INFO] Job de lookup finalizado {"job_id":31,"ean":"7790350762620","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:39.869Z] [INFO] Job de lookup finalizado {"job_id":40,"ean":"7896398660208","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.031Z] [INFO] Job de lookup finalizado {"job_id":39,"ean":"7896009159855","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.235Z] [INFO] Job de lookup finalizado {"job_id":36,"ean":"7896398660246","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.633Z] [INFO] Job de lookup finalizado {"job_id":34,"ean":"7898422741648","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.635Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":5317}
+[2026-06-05T20:06:40.638Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:06:40.639Z] [INFO] Lookup enfileirado {"job_id":41,"ean":"7896398660215","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.640Z] [INFO] Lookup enfileirado {"job_id":42,"ean":"7896398660222","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.640Z] [INFO] Lookup enfileirado {"job_id":43,"ean":"7896398660253","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.640Z] [INFO] Lookup enfileirado {"job_id":44,"ean":"7896398660260","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.641Z] [INFO] Lookup enfileirado {"job_id":45,"ean":"7896398610593","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.642Z] [INFO] Lookup enfileirado {"job_id":46,"ean":"7896398616205","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.642Z] [INFO] Lookup enfileirado {"job_id":47,"ean":"7896398660116","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.643Z] [INFO] Lookup enfileirado {"job_id":48,"ean":"7896398660130","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.643Z] [INFO] Lookup enfileirado {"job_id":49,"ean":"7896398660031","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.644Z] [INFO] Lookup enfileirado {"job_id":50,"ean":"7896398660048","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:40.645Z] [INFO] Lookup retirado da fila para processamento {"job_id":41,"ean":"7896398660215","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:06:40.645Z] [INFO] Lookup retirado da fila para processamento {"job_id":42,"ean":"7896398660222","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:06:40.646Z] [INFO] Lookup retirado da fila para processamento {"job_id":43,"ean":"7896398660253","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:06:40.646Z] [INFO] Lookup retirado da fila para processamento {"job_id":44,"ean":"7896398660260","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:06:40.646Z] [INFO] Lookup retirado da fila para processamento {"job_id":45,"ean":"7896398610593","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:06:40.647Z] [INFO] Lookup retirado da fila para processamento {"job_id":46,"ean":"7896398616205","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:06:40.647Z] [INFO] Lookup retirado da fila para processamento {"job_id":47,"ean":"7896398660116","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:06:40.648Z] [INFO] Lookup retirado da fila para processamento {"job_id":48,"ean":"7896398660130","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:06:40.648Z] [INFO] Lookup retirado da fila para processamento {"job_id":49,"ean":"7896398660031","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:06:40.648Z] [INFO] Lookup retirado da fila para processamento {"job_id":50,"ean":"7896398660048","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:43.086Z] [INFO] Job de lookup finalizado {"job_id":44,"ean":"7896398660260","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:43.114Z] [INFO] Job de lookup finalizado {"job_id":41,"ean":"7896398660215","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:43.207Z] [INFO] Job de lookup finalizado {"job_id":50,"ean":"7896398660048","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:43.852Z] [INFO] Job de lookup finalizado {"job_id":42,"ean":"7896398660222","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.000Z] [INFO] Job de lookup finalizado {"job_id":48,"ean":"7896398660130","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.025Z] [INFO] Job de lookup finalizado {"job_id":43,"ean":"7896398660253","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.146Z] [INFO] Job de lookup finalizado {"job_id":47,"ean":"7896398660116","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.384Z] [INFO] Job de lookup finalizado {"job_id":49,"ean":"7896398660031","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.462Z] [INFO] Job de lookup finalizado {"job_id":46,"ean":"7896398616205","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.734Z] [INFO] Job de lookup finalizado {"job_id":45,"ean":"7896398610593","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.736Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":4098}
+[2026-06-05T20:06:44.753Z] [INFO] Requisicao recebida {"method":"POST","path":"/lookup/eans"}
+[2026-06-05T20:06:44.755Z] [INFO] Lookup enfileirado {"job_id":51,"ean":"7896398680107","fila_pendente":1,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.756Z] [INFO] Lookup enfileirado {"job_id":52,"ean":"7896398680206","fila_pendente":2,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.757Z] [INFO] Lookup enfileirado {"job_id":53,"ean":"7891060836264","fila_pendente":3,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.758Z] [INFO] Lookup enfileirado {"job_id":54,"ean":"7891060836288","fila_pendente":4,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.759Z] [INFO] Lookup enfileirado {"job_id":55,"ean":"7891060836301","fila_pendente":5,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.760Z] [INFO] Lookup enfileirado {"job_id":56,"ean":"7891060836325","fila_pendente":6,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.761Z] [INFO] Lookup enfileirado {"job_id":57,"ean":"7896004709222","fila_pendente":7,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.761Z] [INFO] Lookup enfileirado {"job_id":58,"ean":"7896004709215","fila_pendente":8,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.762Z] [INFO] Lookup enfileirado {"job_id":59,"ean":"7896004711270","fila_pendente":9,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.762Z] [INFO] Lookup enfileirado {"job_id":60,"ean":"7896004711263","fila_pendente":10,"jobs_ativos":0,"max_concorrencia":10}
+[2026-06-05T20:06:44.763Z] [INFO] Lookup retirado da fila para processamento {"job_id":51,"ean":"7896398680107","jobs_ativos":1,"fila_restante":9,"max_concorrencia":10}
+[2026-06-05T20:06:44.764Z] [INFO] Lookup retirado da fila para processamento {"job_id":52,"ean":"7896398680206","jobs_ativos":2,"fila_restante":8,"max_concorrencia":10}
+[2026-06-05T20:06:44.765Z] [INFO] Lookup retirado da fila para processamento {"job_id":53,"ean":"7891060836264","jobs_ativos":3,"fila_restante":7,"max_concorrencia":10}
+[2026-06-05T20:06:44.765Z] [INFO] Lookup retirado da fila para processamento {"job_id":54,"ean":"7891060836288","jobs_ativos":4,"fila_restante":6,"max_concorrencia":10}
+[2026-06-05T20:06:44.765Z] [INFO] Lookup retirado da fila para processamento {"job_id":55,"ean":"7891060836301","jobs_ativos":5,"fila_restante":5,"max_concorrencia":10}
+[2026-06-05T20:06:44.766Z] [INFO] Lookup retirado da fila para processamento {"job_id":56,"ean":"7891060836325","jobs_ativos":6,"fila_restante":4,"max_concorrencia":10}
+[2026-06-05T20:06:44.766Z] [INFO] Lookup retirado da fila para processamento {"job_id":57,"ean":"7896004709222","jobs_ativos":7,"fila_restante":3,"max_concorrencia":10}
+[2026-06-05T20:06:44.766Z] [INFO] Lookup retirado da fila para processamento {"job_id":58,"ean":"7896004709215","jobs_ativos":8,"fila_restante":2,"max_concorrencia":10}
+[2026-06-05T20:06:44.767Z] [INFO] Lookup retirado da fila para processamento {"job_id":59,"ean":"7896004711270","jobs_ativos":9,"fila_restante":1,"max_concorrencia":10}
+[2026-06-05T20:06:44.767Z] [INFO] Lookup retirado da fila para processamento {"job_id":60,"ean":"7896004711263","jobs_ativos":10,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:47.167Z] [INFO] Job de lookup finalizado {"job_id":58,"ean":"7896004709215","jobs_ativos":9,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:48.297Z] [INFO] Job de lookup finalizado {"job_id":57,"ean":"7896004709222","jobs_ativos":8,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:48.493Z] [INFO] Job de lookup finalizado {"job_id":51,"ean":"7896398680107","jobs_ativos":7,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:48.588Z] [INFO] Job de lookup finalizado {"job_id":59,"ean":"7896004711270","jobs_ativos":6,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:48.590Z] [INFO] Job de lookup finalizado {"job_id":60,"ean":"7896004711263","jobs_ativos":5,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:48.660Z] [INFO] Job de lookup finalizado {"job_id":52,"ean":"7896398680206","jobs_ativos":4,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:50.793Z] [INFO] Job de lookup finalizado {"job_id":54,"ean":"7891060836288","jobs_ativos":3,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:51.020Z] [INFO] Job de lookup finalizado {"job_id":56,"ean":"7891060836325","jobs_ativos":2,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:51.928Z] [INFO] Job de lookup finalizado {"job_id":53,"ean":"7891060836264","jobs_ativos":1,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:53.091Z] [INFO] Job de lookup finalizado {"job_id":55,"ean":"7891060836301","jobs_ativos":0,"fila_restante":0,"max_concorrencia":10}
+[2026-06-05T20:06:53.092Z] [INFO] Requisicao finalizada {"method":"POST","path":"/lookup/eans","status":200,"duration_ms":8339}
+[2026-06-05T20:07:06.839Z] [INFO] Requisicao recebida {"method":"POST","path":"/imports/trier"}
+[2026-06-05T20:07:06.915Z] [INFO] Importacao trier criada e aguardando processamento {"importacao_id":61,"filtros":{"codigo":null,"codigoBarras":"7891060836264","nomeProduto":null,"primeiroRegistro":0,"quantidadeRegistros":50,"ativo":null,"integracaoEcommerce":null,"processaCustoMedio":false}}
+[2026-06-05T20:07:06.916Z] [INFO] Importacao enfileirada {"importacao_id":61,"fila_pendente":1,"jobs_ativos":0}
+[2026-06-05T20:07:06.917Z] [INFO] Importacao Trier aceita para processamento {"importacao_id":61,"status":"pending","ean":"7891060836264"}
+[2026-06-05T20:07:06.918Z] [INFO] Requisicao finalizada {"method":"POST","path":"/imports/trier","status":202,"duration_ms":79}
+[2026-06-05T20:07:06.919Z] [INFO] Importacao retirada da fila para processamento {"importacao_id":61,"jobs_ativos":1,"fila_restante":0}
+[2026-06-05T20:07:06.946Z] [INFO] Processamento da importacao trier iniciado {"importacao_id":61,"quantidade_registros":50,"primeiro_registro":0,"item_concurrency":8}
+[2026-06-05T20:07:06.947Z] [INFO] Consumidor da importacao trier iniciado {"importacao_id":61,"batch_size_triagem":4}
+[2026-06-05T20:07:06.948Z] [INFO] Buscando pagina de produtos na trier {"importacao_id":61,"pagina":1,"primeiro_registro":0,"quantidade_registros":50,"ativo":null,"integracao_ecommerce":null,"processa_custo_medio":false}
+[2026-06-05T20:07:07.263Z] [INFO] Pagina retornada pela trier {"importacao_id":61,"pagina":1,"endpoint":"/rest/integracao/produto/obter-v1","quantidade_itens":1,"total":1}
+[2026-06-05T20:07:07.349Z] [INFO] Pagina armazenada em staging para trier {"importacao_id":61,"pagina":1,"staged_itens_pagina":1,"staged_itens_total":1,"itens_aguardando_consumidor":1,"sample_eans":["7891060836264"]}
+[2026-06-05T20:07:07.376Z] [INFO] Consumidor retirou lote do staging de trier {"importacao_id":61,"staged_itens_lote":1,"staged_itens_restantes":0,"sample_eans":["7891060836264"]}
+[2026-06-05T20:07:07.377Z] [INFO] Iniciando checagem de existencia no Banco Unico {"total_eans_consulta":1,"batches":1,"batch_size":100,"sample_eans":["7891060836264"]}
+[2026-06-05T20:07:07.378Z] [INFO] Consultando batch de EANs no Banco Unico {"batch_index":1,"batch_total":1,"eans_no_batch":1,"sample_eans":["7891060836264"]}
+[2026-06-05T20:07:07.483Z] [INFO] Resultado do batch consultado no Banco Unico {"batch_index":1,"encontrados":0,"faltantes":1,"found_eans_sample":[]}
+[2026-06-05T20:07:07.484Z] [INFO] Checagem de existencia no Banco Unico concluida {"total_consultados":1,"total_existentes":0,"total_ausentes":1,"existing_eans_sample":[]}
+[2026-06-05T20:07:07.485Z] [INFO] Resumo da triagem antes do enriquecimento {"importacao_id":61,"staged_total":1,"validos_unicos":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_enriquecimento":1,"sample_eans_elegiveis":["7891060836264"],"acumulado":{"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}}
+[2026-06-05T20:07:07.514Z] [INFO] Iniciando enriquecimento externo {"importacao_id":61,"item_id":1036769,"ean":"7891060836264"}
+[2026-06-05T20:07:09.795Z] [INFO] Enriquecimento concluido {"importacao_id":61,"item_id":1036769,"ean":"7891060836264","enriched":true,"requires_approval":false,"fontes_consultadas":{"convertize_busca":false,"convertize_busca_error":null,"convertize_detalhe":false,"farmaindex_busca":false,"farmaindex_busca_error":null,"farmaindex_detalhe":false,"drogasil_busca":true,"drogasil_busca_error":null,"drogasil_detalhe":true,"cache_hit":false,"encontrado":true}}
+[2026-06-05T20:07:13.203Z] [INFO] Classificacao mercadologica concluida {"importacao_id":61,"item_id":1036769,"ean":"7891060836264","classificacao_origem":"openai","departamento":null,"categoria":"Nutricosmetico","subcategoria":"Pele Cabelos  E Unha","segmento":"Pele Cabelos  E Unha","subsegmento":"Pele Cabelos  E Unha"}
+[2026-06-05T20:07:13.206Z] [INFO] Publicando produto no Banco Unico {"importacao_id":61,"item_id":1036769,"ean":"7891060836264","descricaoProduto":"Tesoura para Unha Mundial Flex Reta com 1 Unidade","categoria":"Nutricosmetico","subcategoria":"Pele Cabelos  E Unha"}
+[2026-06-05T20:07:14.073Z] [INFO] Produto publicado no Banco Unico com sucesso {"importacao_id":61,"item_id":1036769,"ean":"7891060836264"}
+[2026-06-05T20:07:14.181Z] [INFO] Consumidor da importacao trier finalizado {"importacao_id":61,"staged_total":1,"invalidos":0,"duplicados_no_lote":0,"existentes_no_banco_unico":0,"elegiveis_processamento":1}
+[2026-06-05T20:07:14.331Z] [INFO] Processamento da importacao finalizado {"importacao_id":61,"status":"completed","itens_processados":1,"itens_sucesso":1,"itens_falha":0,"itens_revisao":0}
+[2026-06-05T20:07:14.331Z] [INFO] Job da fila finalizado {"importacao_id":61,"jobs_ativos":0,"fila_restante":0}
+[2026-06-05T20:07:17.292Z] [INFO] Requisicao recebida {"method":"GET","path":"/imports/61"}
+[2026-06-05T20:07:17.413Z] [INFO] Requisicao finalizada {"method":"GET","path":"/imports/61","status":200,"duration_ms":121}

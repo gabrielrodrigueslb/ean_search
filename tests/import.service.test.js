@@ -339,4 +339,203 @@ describe("ImportService processSingleItem", () => {
       }),
     }));
   });
+
+  test("descarta produtos ja existentes no Banco Unico antes do enriquecimento externo", async () => {
+    const repository = {
+      createItem: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 201,
+          importacao_id: 20,
+          ean: "7891058017507",
+          nome_recebido: "Dorflex 36 comprimidos",
+        })
+        .mockResolvedValueOnce({
+          id: 202,
+          importacao_id: 20,
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos",
+        }),
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+      incrementImportacaoCounters: jest.fn().mockResolvedValue({}),
+      updateImportacao: jest.fn().mockResolvedValue({}),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos",
+          dados_brutos: {
+            origem_nome: "drogasil",
+            origem_dados: "drogasil",
+            nome: "Dipirona 500mg 30 comprimidos",
+            nome_produto: "Dipirona 500mg 30 comprimidos",
+            nome_exibicao: "Dipirona 500mg 30 comprimidos",
+            categoria: "Dor e Febre",
+            subcategoria: "Analgesicos",
+            laboratorio: "Prati",
+            farmacos: [{ nome: "Dipirona Monoidratada" }],
+          },
+        },
+        fontes_consultadas: {
+          drogasil_busca: true,
+          drogasil_detalhe: true,
+        },
+      }),
+      createSession: jest.fn(() => ({ lookupCache: new Map() })),
+    };
+
+    const bancoUnicoService = {
+      searchProductsByEans: jest.fn().mockResolvedValue({
+        requested: 2,
+        returned: 1,
+        missing: 1,
+        products: [
+          { ean: "7891058017507", descricaoProduto: "Dorflex 36 comprimidos" },
+        ],
+        missingEans: ["7899547531213"],
+      }),
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
+
+    await service.processStagedProviderItems({
+      importacaoId: 20,
+      stagedEntries: [
+        {
+          item: { ean: "7891058017507", nome_recebido: "Dorflex 36 comprimidos", fonte: "trier" },
+          importItem: { id: 201, importacao_id: 20, nome_recebido: "Dorflex 36 comprimidos" },
+        },
+        {
+          item: { ean: "7899547531213", nome_recebido: "Dipirona 500mg 30 comprimidos", fonte: "trier" },
+          importItem: { id: 202, importacao_id: 20, nome_recebido: "Dipirona 500mg 30 comprimidos" },
+        },
+      ],
+      enrichmentSession: { lookupCache: new Map() },
+      productApi: {},
+    });
+
+    expect(bancoUnicoService.searchProductsByEans).toHaveBeenCalledWith(
+      ["7891058017507", "7899547531213"],
+      {},
+    );
+    expect(enrichmentService.enrichImportedItem).toHaveBeenCalledTimes(1);
+    expect(enrichmentService.enrichImportedItem).toHaveBeenCalledWith(expect.objectContaining({
+      ean: "7899547531213",
+    }), expect.anything());
+    expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
+    expect(repository.updateItem).toHaveBeenCalledWith(201, expect.objectContaining({
+      status: "enriched",
+      mensagem_erro: "Produto descartado porque o EAN 7891058017507 ja existe no Banco Unico.",
+      fontes_consultadas: expect.objectContaining({
+        action: "skipped_existing_in_banco_unico",
+      }),
+    }));
+  });
+
+  test("descarta EAN duplicado quando ele reaparece em lotes diferentes do pipeline", async () => {
+    const repository = {
+      createItem: jest.fn(),
+      updateItem: jest.fn().mockImplementation(async (id, data) => ({
+        id,
+        ...data,
+      })),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+      incrementImportacaoCounters: jest.fn().mockResolvedValue({}),
+      updateImportacao: jest.fn().mockResolvedValue({}),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos",
+          dados_brutos: {
+            origem_nome: "drogasil",
+            origem_dados: "drogasil",
+            nome: "Dipirona 500mg 30 comprimidos",
+          },
+        },
+        fontes_consultadas: {
+          drogasil_busca: true,
+        },
+      }),
+      createSession: jest.fn(() => ({ lookupCache: new Map() })),
+    };
+
+    const bancoUnicoService = {
+      searchProductsByEans: jest.fn().mockResolvedValue({
+        requested: 1,
+        returned: 0,
+        missing: 1,
+        products: [],
+        missingEans: ["7899547531213"],
+      }),
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
+
+    const sharedSeenEans = new Set();
+
+    await service.processStagedProviderItems({
+      importacaoId: 21,
+      stagedEntries: [
+        {
+          item: { ean: "7899547531213", nome_recebido: "Dipirona 500mg 30 comprimidos", fonte: "trier" },
+          importItem: { id: 301, importacao_id: 21, nome_recebido: "Dipirona 500mg 30 comprimidos" },
+        },
+      ],
+      enrichmentSession: { lookupCache: new Map() },
+      productApi: {},
+      sharedSeenEans,
+    });
+
+    await service.processStagedProviderItems({
+      importacaoId: 21,
+      stagedEntries: [
+        {
+          item: { ean: "7899547531213", nome_recebido: "Dipirona 500mg 30 comprimidos", fonte: "trier" },
+          importItem: { id: 302, importacao_id: 21, nome_recebido: "Dipirona 500mg 30 comprimidos" },
+        },
+      ],
+      enrichmentSession: { lookupCache: new Map() },
+      productApi: {},
+      sharedSeenEans,
+    });
+
+    expect(enrichmentService.enrichImportedItem).toHaveBeenCalledTimes(1);
+    expect(repository.updateItem).toHaveBeenCalledWith(302, expect.objectContaining({
+      status: "enriched",
+      mensagem_erro: "Produto descartado por EAN duplicado no lote do provedor: 7899547531213.",
+      fontes_consultadas: expect.objectContaining({
+        action: "skipped_duplicate_in_provider_batch",
+      }),
+    }));
+  });
 });
