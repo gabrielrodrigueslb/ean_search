@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import request from "supertest";
+import express from "express";
 
 const enrichImportedItem = jest.fn();
+const classifyItem = jest.fn();
 const buildSnapshot = jest.fn();
 const enqueue = jest.fn();
 
@@ -18,6 +20,19 @@ jest.unstable_mockModule("../src/services/product.service.js", () => ({
   })),
 }));
 
+jest.unstable_mockModule("../src/services/mercadological-classification.service.js", () => ({
+  MercadologicalClassificationService: jest.fn().mockImplementation(() => ({
+    classifyItem,
+  })),
+}));
+
+jest.unstable_mockModule("../src/routes/import.routes.js", () => {
+  const router = express.Router();
+  return {
+    default: router,
+  };
+});
+
 jest.unstable_mockModule("../src/services/lookup-queue.service.js", () => ({
   lookupQueueService: {
     maxConcurrent: 10,
@@ -30,9 +45,11 @@ const { createApp } = await import("../src/app.js");
 describe("GET /lookup/ean/:ean", () => {
   beforeEach(() => {
     enrichImportedItem.mockReset();
+    classifyItem.mockReset();
     buildSnapshot.mockReset();
     enqueue.mockReset();
     enqueue.mockImplementation(({ handler }) => handler());
+    classifyItem.mockImplementation(async (item) => item);
   });
 
   test("retorna 400 quando o EAN e invalido", async () => {
@@ -196,9 +213,11 @@ describe("GET /lookup/ean/:ean", () => {
 describe("POST /lookup", () => {
   beforeEach(() => {
     enrichImportedItem.mockReset();
+    classifyItem.mockReset();
     buildSnapshot.mockReset();
     enqueue.mockReset();
     enqueue.mockImplementation(({ handler }) => handler());
+    classifyItem.mockImplementation(async (item) => item);
   });
 
   test("retorna 400 quando o lote vier vazio", async () => {

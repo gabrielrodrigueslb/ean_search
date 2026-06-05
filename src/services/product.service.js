@@ -85,6 +85,19 @@ class ProductService {
     );
 
     const fabricante = pickFirstString(raw.laboratorio, raw.fabricante, raw.marca);
+    const finalStructure = raw.catalogo_normalizado || {
+      ean: String(item.ean),
+      descricao_original: pickFirstString(raw.descricao_original),
+      descricao_normalizada: pickFirstString(raw.descricao_normalizada),
+      marca: pickFirstString(raw.marca),
+      fabricante,
+      departamento: pickFirstString(raw.departamento),
+      categoria: pickFirstString(raw.categoria),
+      subcategoria: pickFirstString(raw.subcategoria),
+      segmento: pickFirstString(raw.segmento),
+      subsegmento: pickFirstString(raw.subsegmento),
+      principio_ativo: activeIngredients.length ? uniquePreservingOrder(activeIngredients) : [],
+    };
 
     const detalhesPayload = {
       ean: String(item.ean),
@@ -101,11 +114,14 @@ class ProductService {
       descricao_original: pickFirstString(raw.descricao_original),
       descricao_normalizada: pickFirstString(raw.descricao_normalizada),
       departamento: pickFirstString(raw.departamento),
+      categoria: pickFirstString(raw.categoria),
       subcategoria: pickFirstString(raw.subcategoria),
       segmento: pickFirstString(raw.segmento),
       subsegmento: pickFirstString(raw.subsegmento),
       ingrediente_ativo: pickFirstString(raw.ingrediente_ativo),
       farmacos: activeIngredients.length ? uniquePreservingOrder(activeIngredients) : null,
+      estrutura_final: finalStructure,
+      classificacao_mercadologica: raw.classificacao_mercadologica || null,
     };
 
     const detalhes = JSON.stringify(detalhesPayload);

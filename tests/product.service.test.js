@@ -28,13 +28,39 @@ describe("ProductService.buildSnapshot", () => {
         nome: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_produto: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_exibicao: "Lencos Umedecidos Baby Wipes 500 Unidades",
+        departamento: "Higiene",
         categoria: "Higiene",
+        subcategoria: "Lencos Umedecidos",
+        segmento: "Infantil",
+        subsegmento: "Uso Diario",
+        catalogo_normalizado: {
+          ean: "7890000000001",
+          descricao_original: "Lencos Umedecidos Baby Wipes 500 Unidades",
+          descricao_normalizada: "lencos umedecidos baby wipes 500 unidades",
+          marca: "Baby Wipes",
+          fabricante: "Baby Wipes",
+          departamento: "Higiene",
+          categoria: "Higiene",
+          subcategoria: "Lencos Umedecidos",
+          segmento: "Infantil",
+          subsegmento: "Uso Diario",
+          principio_ativo: [],
+        },
       },
     });
 
     expect(snapshot.nomeSocial).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
     expect(snapshot.descricaoProduto).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
-    expect(snapshot.classificacao).toBe("Higiene");
+    expect(snapshot.classificacao).toBe("Lencos Umedecidos");
+    const detalhes = JSON.parse(snapshot.detalhes);
+    expect(detalhes.categoria).toBe("Higiene");
+    expect(detalhes.estrutura_final).toEqual(expect.objectContaining({
+      ean: "7890000000001",
+      categoria: "Higiene",
+      subcategoria: "Lencos Umedecidos",
+      segmento: "Infantil",
+      subsegmento: "Uso Diario",
+    }));
     expect(snapshot.debug_tokens.length).toBe(snapshot.debug_token_count);
     expect(snapshot.debug_embedding_dimensions).toBe(EMBEDDING_DIMENSIONS);
   });

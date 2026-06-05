@@ -82,6 +82,44 @@ function buildProductHtml() {
   return `<!DOCTYPE html><html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nextData)}</script></body></html>`;
 }
 
+function buildProductHtmlWithoutBreadcrumb() {
+  const nextData = {
+    props: {
+      pageProps: {
+        productData: {
+          sku: "23288",
+          name: "Vick 44E Xarope Expectorante 120ml",
+          breadcrumb: null,
+          productEan: "7590002023228",
+          custom_attributes: [
+            {
+              attribute_code: "description",
+              value_string: ["Xarope expectorante 120ml."],
+              value: null,
+            },
+          ],
+        },
+        pdpSeoSchemaResult: {
+          nodes: [
+            {
+              "@type": "Product",
+              name: "Vick 44E Xarope Expectorante 120ml",
+              sku: "23288",
+              gtin13: "7590002023228",
+              brand: {
+                "@type": "Brand",
+                name: "Vick",
+              },
+            },
+          ],
+        },
+      },
+    },
+  };
+
+  return `<!DOCTYPE html><html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nextData)}</script></body></html>`;
+}
+
 describe("DrogasilLookupSource", () => {
   test("busca o primeiro resultado por EAN e extrai dados do detalhe", async () => {
     const searchHtml = fs.readFileSync(
@@ -146,6 +184,46 @@ describe("DrogasilLookupSource", () => {
         marca: "Maxinutri",
         ean: "7898593053571",
       }),
+    }));
+  });
+
+  test("tolera detalhe sem breadcrumb", async () => {
+    const productHtml = buildProductHtmlWithoutBreadcrumb();
+    const source = new DrogasilLookupSource({
+      client: {
+        async fetchDocument() {
+          return {
+            url: "https://www.drogasil.com.br/vick-44e-xarope-expectorante-120-ml.html",
+            html: productHtml,
+            $: (await import("cheerio")).load(productHtml),
+          };
+        },
+      },
+    });
+
+    const detail = await source.fetchProductDetail(
+      "https://www.drogasil.com.br/vick-44e-xarope-expectorante-120-ml.html",
+      {
+        ean: "7590002023228",
+        departamento: "Remédios",
+        categoria: "Para Gripe e Resfriado",
+        subcategoria: "Medicamentos",
+        marca: "Vick",
+        sku: "23288",
+      },
+    );
+
+    expect(detail.info).toEqual(expect.objectContaining({
+      gtin: "7590002023228",
+      produto: "Vick 44E Xarope Expectorante 120ml",
+      departamento: "Remédios",
+      categoria: "Para Gripe e Resfriado",
+      subcategoria: "Medicamentos",
+    }));
+    expect(detail.raw).toEqual(expect.objectContaining({
+      source: "drogasil",
+      detail_url: "https://www.drogasil.com.br/vick-44e-xarope-expectorante-120-ml.html",
+      ean: "7590002023228",
     }));
   });
 });

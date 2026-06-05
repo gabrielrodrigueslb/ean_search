@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+import fs from "fs";
 
 function parseCsvList(value, fallback = []) {
   if (!String(value || "").trim()) {
@@ -25,6 +26,20 @@ function parseJsonArray(value, fallback = []) {
   }
 }
 
+function pickFirstExistingPath(paths = []) {
+  for (const candidate of paths) {
+    if (!String(candidate || "").trim()) {
+      continue;
+    }
+
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return "";
+}
+
 const env = {
   port: Number(process.env.PORT || 3000),
   databaseUrl: process.env.DATABASE_URL,
@@ -40,6 +55,17 @@ const env = {
   convertizeRequestTimeoutMs: Number(process.env.CONVERTIZE_REQUEST_TIMEOUT_MS || process.env.REQUEST_TIMEOUT_MS || 10000),
   bancoUnicoBaseUrl: process.env.BANCO_UNICO_BASE_URL || "https://unicocontato.tech/banco-unico",
   bancoUnicoRequestTimeoutMs: Number(process.env.BANCO_UNICO_REQUEST_TIMEOUT_MS || 30000),
+  openAiApiKey: process.env.OPENAI_API_KEY || "",
+  openAiBaseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+  mercadologicalAiEnabled: process.env.MERCADOLOGICAL_AI_ENABLED !== "false",
+  mercadologicalAiModel: process.env.MERCADOLOGICAL_AI_MODEL || "gpt-4o-mini",
+  mercadologicalAiTimeoutMs: Number(process.env.MERCADOLOGICAL_AI_TIMEOUT_MS || 30000),
+  mercadologicalAiCandidateLimit: Math.max(5, Number(process.env.MERCADOLOGICAL_AI_CANDIDATE_LIMIT || 25)),
+  mercadologicalTreeCsvPath: pickFirstExistingPath([
+    process.env.MERCADOLOGICAL_TREE_CSV_PATH,
+    "C:\\Users\\Comercial\\Downloads\\levantamento_arvore_mercadologica.csv",
+    "./levantamento_arvore_mercadologica.csv",
+  ]),
   importQueueConcurrency: Number(process.env.IMPORT_QUEUE_CONCURRENCY || 1),
   importItemConcurrency: Number(process.env.IMPORT_ITEM_CONCURRENCY || 3),
   lookupQueueConcurrency: Math.min(10, Math.max(1, Number(process.env.LOOKUP_QUEUE_CONCURRENCY || 10))),

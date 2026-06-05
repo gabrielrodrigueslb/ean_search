@@ -221,7 +221,9 @@ function extractPackageInfo(...values) {
 }
 
 function extractBreadcrumbNames(items = []) {
-  return items
+  const normalizedItems = Array.isArray(items) ? items : [];
+
+  return normalizedItems
     .map((item) => pickFirstString(item?.name))
     .filter(Boolean);
 }

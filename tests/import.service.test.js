@@ -83,7 +83,12 @@ describe("ImportService processSingleItem", () => {
     EnrichmentService.mockImplementation(() => enrichmentService);
     BancoUnicoService.mockImplementation(() => bancoUnicoService);
 
-    const service = new ImportService();
+    const mercadologicalClassificationService = {
+      classifyItem: jest.fn(async (item) => item),
+    };
+    const service = new ImportService({
+      mercadologicalClassificationService,
+    });
 
     const status = await service.processSingleItem(12, {
       ean: "7891058017507",
@@ -132,7 +137,11 @@ describe("ImportService processSingleItem", () => {
       publishProduct: jest.fn(),
     }));
 
-    const service = new ImportService();
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
     const activeIndexes = new Set();
     let maxParallelism = 0;
 
@@ -206,7 +215,11 @@ describe("ImportService processSingleItem", () => {
     EnrichmentService.mockImplementation(() => enrichmentService);
     BancoUnicoService.mockImplementation(() => bancoUnicoService);
 
-    const service = new ImportService();
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
 
     const status = await service.processSingleItem(13, {
       ean: "7893736007527",
@@ -282,7 +295,11 @@ describe("ImportService processSingleItem", () => {
     EnrichmentService.mockImplementation(() => enrichmentService);
     BancoUnicoService.mockImplementation(() => bancoUnicoService);
 
-    const service = new ImportService();
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
 
     const status = await service.processSingleItem(14, {
       ean: "7891317001056",

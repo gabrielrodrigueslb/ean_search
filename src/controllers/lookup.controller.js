@@ -1,6 +1,7 @@
 import env from "../config/env.js";
 import { EnrichmentService } from "../services/enrichment.service.js";
 import { lookupQueueService } from "../services/lookup-queue.service.js";
+import { MercadologicalClassificationService } from "../services/mercadological-classification.service.js";
 import { ProductService } from "../services/product.service.js";
 import { formatSourceLabel } from "../utils/productSourcePolicy.js";
 import { validateEAN } from "../utils/validateEAN.js";
@@ -76,11 +77,14 @@ function extractAttemptedSources(fontesConsultadas = {}) {
 class LookupController {
   constructor({
     enrichmentService,
+    mercadologicalClassificationService,
     productService,
     queueService,
     maxBatchItems = env.lookupBatchMaxItems,
   } = {}) {
     this.enrichmentService = enrichmentService || new EnrichmentService();
+    this.mercadologicalClassificationService =
+      mercadologicalClassificationService || new MercadologicalClassificationService();
     this.productService = productService || new ProductService();
     this.queueService = queueService || lookupQueueService;
     this.maxBatchItems = Math.min(10, Math.max(1, Number(maxBatchItems || env.lookupBatchMaxItems || 10)));
@@ -114,9 +118,10 @@ class LookupController {
       };
     }
 
+    const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item);
     const product = enriched.requiresApproval
       ? null
-      : this.productService.buildSnapshot(enriched.item);
+      : this.productService.buildSnapshot(classifiedItem);
 
     return {
       status: enriched.requiresApproval ? "review" : "enriched",
@@ -125,7 +130,7 @@ class LookupController {
       requiresApproval: Boolean(enriched.requiresApproval),
       approvalReason: enriched.approvalReason || null,
       fontes_consultadas: enriched.fontes_consultadas || {},
-      item: enriched.item,
+      item: classifiedItem,
       product,
       error: null,
       fallback: null,

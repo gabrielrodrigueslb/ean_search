@@ -1,0 +1,69 @@
+id,category,query,expected_top_k,matchers,notes
+exact-001,nome-exato,dipirona,1,"[{""allOf"":[""dipirona""]}]",Busca exata por principio ativo.
+exact-002,nome-exato,paracetamol,1,"[{""allOf"":[""paracetamol""]}]",Busca exata por principio ativo.
+exact-003,nome-exato,ibuprofeno,1,"[{""allOf"":[""ibuprofeno""]}]",Busca exata por principio ativo.
+exact-004,nome-exato,omeprazol,1,"[{""allOf"":[""omeprazol""]}]",Busca exata por principio ativo.
+exact-005,nome-exato,loratadina,1,"[{""allOf"":[""loratadina""]}]",Busca exata por principio ativo.
+exact-006,nome-exato,amoxicilina,1,"[{""allOf"":[""amoxicilina""]}]",Busca exata por principio ativo.
+exact-007,nome-exato,azitromicina,1,"[{""allOf"":[""azitromicina""]}]",Busca exata por principio ativo.
+exact-008,nome-exato,nimesulida,1,"[{""allOf"":[""nimesulida""]}]",Busca exata por principio ativo.
+exact-009,nome-exato,diclofenaco,1,"[{""allOf"":[""diclofenaco""]}]",Busca exata por principio ativo.
+exact-010,nome-exato,losartana,1,"[{""allOf"":[""losartana""]}]",Busca exata por principio ativo.
+exact-011,nome-exato,cetoconazol,1,"[{""allOf"":[""cetoconazol""]}]",Busca exata por principio ativo.
+exact-012,nome-exato,pantoprazol,1,"[{""allOf"":[""pantoprazol""]}]",Busca exata por principio ativo.
+exact-013,nome-exato,metformina,1,"[{""allOf"":[""metformina""]}]",Busca exata por principio ativo.
+exact-014,nome-exato,sinvastatina,1,"[{""allOf"":[""sinvastatina""]}]",Busca exata por principio ativo.
+typo-001,typo,dirpirona,3,"[{""allOf"":[""dipirona""]}]",Erro de digitacao simples.
+typo-002,typo,diprona,3,"[{""allOf"":[""dipirona""]}]",Erro de omissao de letra.
+typo-003,typo,paracetamal,3,"[{""allOf"":[""paracetamol""]}]",Erro de digitacao simples.
+typo-004,typo,iboprofeno,3,"[{""allOf"":[""ibuprofeno""]}]",Erro de digitacao simples.
+typo-005,typo,amoxilina,3,"[{""allOf"":[""amoxicilina""]}]",Erro de digitacao simples.
+typo-006,typo,azitromicinaa,3,"[{""allOf"":[""azitromicina""]}]",Erro de repeticao de letra.
+typo-007,typo,omeprazou,3,"[{""allOf"":[""omeprazol""]}]",Erro de digitacao simples.
+typo-008,typo,loratidina,3,"[{""allOf"":[""loratadina""]}]",Erro de digitacao simples.
+typo-009,typo,nimesolida,3,"[{""allOf"":[""nimesulida""]}]",Erro de substituicao de vogal.
+typo-010,typo,diclofenacoo,3,"[{""allOf"":[""diclofenaco""]}]",Erro de repeticao de letra.
+typo-011,typo,losartan,3,"[{""allOf"":[""losartana""]}]",Erro de omissao de letra.
+typo-012,typo,cetoconasoll,3,"[{""allOf"":[""cetoconazol""]}]",Erro de digitacao simples.
+typo-013,typo,pantoprasol,3,"[{""allOf"":[""pantoprazol""]}]",Erro de digitacao simples.
+typo-014,typo,sinvastatinaa,3,"[{""allOf"":[""sinvastatina""]}]",Erro de repeticao de letra.
+active-001,principio-ativo,dipirona monoidratada,3,"[{""allOf"":[""dipirona"",""monoidratada""]}]",Principio ativo especifico.
+active-002,principio-ativo,losartana potassica,3,"[{""allOf"":[""losartana"",""potassica""]}]",Principio ativo especifico.
+active-003,principio-ativo,maleato de dexclorfeniramina,3,"[{""allOf"":[""dexclorfeniramina""]}]",Principio ativo de antialergico.
+active-004,principio-ativo,diclofenaco dietilamonio,3,"[{""allOf"":[""diclofenaco"",""dietilamonio""]}]",Principio ativo especifico.
+active-005,principio-ativo,amoxicilina triidratada,3,"[{""allOf"":[""amoxicilina""]}]",Principio ativo especifico.
+active-006,principio-ativo,azitromicina diidratada,3,"[{""allOf"":[""azitromicina""]}]",Principio ativo especifico.
+active-007,principio-ativo,cloridrato de metformina,3,"[{""allOf"":[""metformina""]}]",Principio ativo especifico.
+active-008,principio-ativo,pantoprazol sodico,3,"[{""allOf"":[""pantoprazol""]}]",Principio ativo especifico.
+active-009,principio-ativo,sinvastatina,3,"[{""allOf"":[""sinvastatina""]}]",Principio ativo especifico.
+active-010,principio-ativo,cetoconazol,3,"[{""allOf"":[""cetoconazol""]}]",Principio ativo especifico.
+compound-001,composto,paracetamol codeina,3,"[{""allOf"":[""paracetamol"",""codeina""]}]",Associacao de analgesicos.
+compound-002,composto,etinilestradiol levonorgestrel,3,"[{""allOf"":[""etinilestradiol"",""levonorgestrel""]}]",Associacao comum de anticoncepcional.
+compound-003,composto,amoxicilina clavulanato,3,"[{""allOf"":[""amoxicilina"",""clavulanato""]}]",Associacao com acido clavulanico.
+compound-004,composto,sulfametoxazol trimetoprima,3,"[{""allOf"":[""sulfametoxazol"",""trimetoprima""]}]",Associacao de antibioticos.
+compound-005,composto,losartana hidroclorotiazida,3,"[{""allOf"":[""losartana"",""hidroclorotiazida""]}]",Associacao para hipertensao.
+compound-006,composto,dipropionato de betametasona acido salicilico,3,"[{""allOf"":[""betametasona"",""salicilico""]}]",Associacao usada em dermatologia.
+compound-007,composto,fenoterol ipratropio,3,"[{""allOf"":[""fenoterol"",""ipratropio""]}]",Associacao para inalacao.
+compound-008,composto,neomicina bacitracina,3,"[{""allOf"":[""neomicina"",""bacitracina""]}]",Associacao topica.
+compound-009,composto,dexclorfeniramina betametasona,3,"[{""allOf"":[""dexclorfeniramina"",""betametasona""]}]",Associacao anti-alergica.
+compound-010,composto,escopolamina dipirona,3,"[{""allOf"":[""escopolamina"",""dipirona""]}]",Associacao para colica e dor.
+intent-001,intencao,remedio para dor e febre,5,"[{""allOf"":[""dipirona""]},{""allOf"":[""paracetamol""]},{""allOf"":[""ibuprofeno""]}]",Intencao analgesica e antipiretica.
+intent-002,intencao,antiinflamatorio para dor muscular,5,"[{""allOf"":[""ibuprofeno""]},{""allOf"":[""diclofenaco""]},{""allOf"":[""nimesulida""]}]",Intencao anti-inflamatoria.
+intent-003,intencao,antibiotico para garganta,5,"[{""allOf"":[""amoxicilina""]},{""allOf"":[""azitromicina""]}]",Intencao de antibiotico oral.
+intent-004,intencao,remedio para azia e refluxo,5,"[{""allOf"":[""omeprazol""]},{""allOf"":[""pantoprazol""]}]",Intencao de protetor gastrico.
+intent-005,intencao,antialergico para rinite,5,"[{""allOf"":[""loratadina""]},{""allOf"":[""dexclorfeniramina""]}]",Intencao de antialergico.
+intent-006,intencao,pomada para micose,5,"[{""allOf"":[""cetoconazol""]},{""allOf"":[""clotrimazol""]}]",Intencao dermatologica.
+intent-007,intencao,anticoncepcional oral,5,"[{""allOf"":[""etinilestradiol"",""levonorgestrel""]},{""allOf"":[""etinilestradiol"",""desogestrel""]}]",Intencao de anticoncepcional.
+intent-008,intencao,remedio para pressao alta,5,"[{""allOf"":[""losartana""]},{""allOf"":[""losartana"",""hidroclorotiazida""]}]",Intencao de antihipertensivo.
+ean-001,ean,7891058021580,1,"[{""ean"":""7891058021580""}]",Anador 500mg/ml Solucao 20 ml.
+ean-002,ean,7897322701486,1,"[{""ean"":""7897322701486""}]",Magnopyrol 500mg/ml Solucao 10 ml.
+ean-003,ean,7896094919396,1,"[{""ean"":""7896094919396""}]",Lisador DIP 500mg/ml Solucao 20 ml.
+ean-004,ean,7891142142214,1,"[{""ean"":""7891142142214""}]",Diprosalic 0,64mg/g + 30mg/g Pomada.
+brand-001,marca-principio,anador dipirona,3,"[{""allOf"":[""anador"",""dipirona""]}]",Marca mais principio ativo.
+brand-002,marca-principio,magnopyrol dipirona,3,"[{""allOf"":[""magnopyrol"",""dipirona""]}]",Marca mais principio ativo.
+brand-003,marca-principio,lisador dip dipirona,3,"[{""allOf"":[""lisador"",""dipirona""]}]",Marca mais principio ativo.
+brand-004,marca-principio,diprosalic betametasona,3,"[{""allOf"":[""diprosalic""],""anyOf"":[""betametasona"",""salicilico""]}]",Marca mais principio ativo composto.
+maker-001,fabricante-classe,ems generico paracetamol,5,"[{""allOf"":[""ems"",""paracetamol""],""anyOf"":[""generico""]}]",Fabricante + classe + principio ativo.
+maker-002,fabricante-classe,medley generico ibuprofeno,5,"[{""allOf"":[""medley"",""ibuprofeno""],""anyOf"":[""generico""]}]",Fabricante + classe + principio ativo.
+maker-003,fabricante-classe,neo quimica generico dipirona,5,"[{""allOf"":[""neo quimica"",""dipirona""],""anyOf"":[""generico""]}]",Fabricante + classe + principio ativo.
+maker-004,fabricante-classe,cosmed analgesico dipirona,5,"[{""allOf"":[""cosmed"",""dipirona""],""anyOf"":[""analgesicos"",""antipireticos""]}]",Fabricante + classe + principio ativo.

@@ -7,6 +7,7 @@ import { importQueueService } from "./import-queue.service.js";
 import { logger } from "../utils/logger.js";
 import env from "../config/env.js";
 import { createDefaultImportProviderRegistry } from "../providers/default-registries.js";
+import { MercadologicalClassificationService } from "./mercadological-classification.service.js";
 class ImportService {
   constructor({
     importacaoRepository,
@@ -14,12 +15,15 @@ class ImportService {
     bancoUnicoService,
     enrichmentService,
     importProviderRegistry,
+    mercadologicalClassificationService,
   } = {}) {
     this.importacaoRepository = importacaoRepository || new ImportacaoRepository();
     this.productService = productService || new ProductService();
     this.bancoUnicoService = bancoUnicoService || new BancoUnicoService();
     this.enrichmentService = enrichmentService || new EnrichmentService();
     this.importProviderRegistry = importProviderRegistry || createDefaultImportProviderRegistry();
+    this.mercadologicalClassificationService =
+      mercadologicalClassificationService || new MercadologicalClassificationService();
   }
 
   buildApiErrorDetails(error) {
@@ -406,7 +410,8 @@ class ImportService {
         return "review";
       }
 
-      const productPayload = this.productService.buildSnapshot(enriched.item);
+      const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item);
+      const productPayload = this.productService.buildSnapshot(classifiedItem);
 
       await this.storeVtexFallback({
         importacaoId,
@@ -414,7 +419,7 @@ class ImportService {
         item,
         ean: validation.ean,
         statusProcessamento: "enriched",
-        enrichedItem: enriched.item,
+        enrichedItem: classifiedItem,
         productPayload,
         fontesConsultadas: {
           source: item.fonte || "importacao",
