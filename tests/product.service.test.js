@@ -15,7 +15,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, Drogasil ou VTEX.");
   });
 
   test("monta documento unico para nome validado pela Convertize", () => {
@@ -75,7 +75,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "ACETICIL 100MG ENV 10CP",
         nome_exibicao: "ACETICIL 100MG ENV 10CP",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, Drogasil ou VTEX.");
   });
 
   test("aceita nome vindo da vtex quando for pass-through operacional", () => {

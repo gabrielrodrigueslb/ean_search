@@ -1,5 +1,11 @@
 import { classifyProductType } from "../utils/classifyProductType.js";
+import env from "../config/env.js";
 import { uniquePreservingOrder, buildSearchArtifacts } from "../utils/catalogItem.js";
+import {
+  formatSourceList,
+  isPublishableNameSource,
+  normalizeSourceKeys,
+} from "../utils/productSourcePolicy.js";
 const EMBEDDING_DIMENSIONS = 512;
 
 function pickFirstString(...values) {
@@ -12,20 +18,21 @@ function pickFirstString(...values) {
   return null;
 }
 
-function isTrustedNameSource(source) {
-  return source === "convertize"
-    || source === "farmaindex";
-}
-
-function isPublishableNameSource(source) {
-  return isTrustedNameSource(source)
-    || source === "vtex";
-}
-
 class ProductService {
+  constructor({
+    trustedNameSources = env.lookupTrustedNameSources,
+    passThroughSources = env.lookupPassThroughSources,
+  } = {}) {
+    this.trustedNameSources = normalizeSourceKeys(trustedNameSources);
+    this.passThroughSources = normalizeSourceKeys(passThroughSources);
+  }
+
   buildSnapshot(item) {
     const raw = item.dados_brutos || item;
-    const trustedNameSource = isPublishableNameSource(raw.origem_nome);
+    const trustedNameSource = isPublishableNameSource(raw.origem_nome, {
+      trustedSources: this.trustedNameSources,
+      passThroughSources: this.passThroughSources,
+    });
     const nomeSocial = pickFirstString(
       trustedNameSource ? raw.nome_produto : null,
       trustedNameSource ? raw.produto : null,
@@ -34,7 +41,12 @@ class ProductService {
     );
 
     if (!nomeSocial) {
-      const error = new Error("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+      const error = new Error(
+        `Nome do produto nao foi validado por ${formatSourceList([
+          ...this.trustedNameSources,
+          ...this.passThroughSources,
+        ])}.`,
+      );
       error.status = 400;
       throw error;
     }
@@ -51,14 +63,21 @@ class ProductService {
       ? raw.farmacos
         .map((farmaco) => pickFirstString(farmaco?.nome, farmaco?.farmaco))
         .filter(Boolean)
-      : [];
+      : String(raw.ingrediente_ativo || "")
+        .split(/[,;/]| e /i)
+        .map((item) => item.trim())
+        .filter(Boolean);
 
     const principioAtivo = activeIngredients.length
       ? uniquePreservingOrder(activeIngredients).join(", ")
       : null;
 
     const classificacao = pickFirstString(
+      raw.subcategoria,
       raw.categoria,
+      raw.departamento,
+      raw.segmento,
+      raw.subsegmento,
       raw.departamento,
       raw.grupo,
       raw.classe,
@@ -79,6 +98,13 @@ class ProductService {
       tarja: pickFirstString(raw.tarja),
       origem_nome: pickFirstString(raw.origem_nome, item.fonte) || "importacao",
       origem_dados: pickFirstString(raw.origem_dados, item.fonte) || "importacao",
+      descricao_original: pickFirstString(raw.descricao_original),
+      descricao_normalizada: pickFirstString(raw.descricao_normalizada),
+      departamento: pickFirstString(raw.departamento),
+      subcategoria: pickFirstString(raw.subcategoria),
+      segmento: pickFirstString(raw.segmento),
+      subsegmento: pickFirstString(raw.subsegmento),
+      ingrediente_ativo: pickFirstString(raw.ingrediente_ativo),
       farmacos: activeIngredients.length ? uniquePreservingOrder(activeIngredients) : null,
     };
 
@@ -96,6 +122,11 @@ class ProductService {
       detalhesPayload.via_administracao,
       detalhesPayload.quantidade,
       detalhesPayload.volume,
+      detalhesPayload.departamento,
+      detalhesPayload.subcategoria,
+      detalhesPayload.segmento,
+      detalhesPayload.subsegmento,
+      detalhesPayload.ingrediente_ativo,
       detalhesPayload.registro_ms,
       detalhesPayload.tarja,
     ]);

@@ -1,6 +1,30 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+function parseCsvList(value, fallback = []) {
+  if (!String(value || "").trim()) {
+    return fallback;
+  }
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function parseJsonArray(value, fallback = []) {
+  if (!String(value || "").trim()) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const env = {
   port: Number(process.env.PORT || 3000),
   databaseUrl: process.env.DATABASE_URL,
@@ -18,7 +42,28 @@ const env = {
   bancoUnicoRequestTimeoutMs: Number(process.env.BANCO_UNICO_REQUEST_TIMEOUT_MS || 30000),
   importQueueConcurrency: Number(process.env.IMPORT_QUEUE_CONCURRENCY || 1),
   importItemConcurrency: Number(process.env.IMPORT_ITEM_CONCURRENCY || 3),
+  lookupQueueConcurrency: Math.min(10, Math.max(1, Number(process.env.LOOKUP_QUEUE_CONCURRENCY || 10))),
+  lookupBatchMaxItems: Math.min(10, Math.max(1, Number(process.env.LOOKUP_BATCH_MAX_ITEMS || 10))),
   ptProductSearchMaxRequestsPerMinute: Number(process.env.PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE || 45),
+  lookupSourceMode: process.env.LOOKUP_SOURCE_MODE || "api_first",
+  lookupTrustedNameSources: parseCsvList(
+    process.env.LOOKUP_TRUSTED_NAME_SOURCES,
+    ["convertize", "farmaindex", "drogasil"],
+  ),
+  lookupPreferredNameSources: parseCsvList(
+    process.env.LOOKUP_PREFERRED_NAME_SOURCES,
+    ["convertize", "farmaindex", "drogasil"],
+  ),
+  lookupPreferredDataSources: parseCsvList(
+    process.env.LOOKUP_PREFERRED_DATA_SOURCES,
+    ["farmaindex", "convertize", "drogasil"],
+  ),
+  lookupPassThroughSources: parseCsvList(
+    process.env.LOOKUP_PASS_THROUGH_SOURCES,
+    ["vtex"],
+  ),
+  drogasilLookupEnabled: process.env.DROGASIL_LOOKUP_ENABLED !== "false",
+  htmlLookupSources: parseJsonArray(process.env.HTML_LOOKUP_SOURCES_JSON, []),
 };
 
 export default env;
