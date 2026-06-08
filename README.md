@@ -145,7 +145,26 @@ IMPORT_ITEM_CONCURRENCY=8
 PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE=45
 BROWSER_FALLBACK_TIMEOUT_MS=45000
 BROWSER_FALLBACK_HEADLESS=true
+LOOKUP_SOURCE_MODE=api_first
+LOOKUP_TRUSTED_NAME_SOURCES=convertize,farmaindex
+LOOKUP_PREFERRED_NAME_SOURCES=convertize,farmaindex
+LOOKUP_PREFERRED_DATA_SOURCES=farmaindex,convertize
+LOOKUP_PASS_THROUGH_SOURCES=vtex
 ```
+
+Para ativar scrapers HTML por `axios` + `cheerio`, voce pode cadastrar fontes no `.env` com `HTML_LOOKUP_SOURCES_JSON`.
+
+Exemplo reduzido:
+
+```env
+LOOKUP_SOURCE_MODE=scraping_first
+LOOKUP_TRUSTED_NAME_SOURCES=site_a,site_b,site_c,site_d
+LOOKUP_PREFERRED_NAME_SOURCES=site_a,site_b,site_c,site_d
+LOOKUP_PREFERRED_DATA_SOURCES=site_a,site_b,site_c,site_d
+HTML_LOOKUP_SOURCES_JSON=[{"key":"site_a","baseUrl":"https://site-a.com","search":{"url":"https://site-a.com/busca","queryParam":"q","queryTemplate":"{{ean}}"},"detail":{"urlTemplate":"{{href}}"},"selectors":{"resultItem":".product-card","resultLink":{"selector":"a","attr":"href"},"resultName":".product-title","resultPresentation":".product-presentation","resultBrand":".product-brand","detailName":"h1","detailPresentation":".presentation","detailBrand":".brand","detailCategory":".breadcrumb li:last-child","detailRegistration":{"selector":".registro-ms","regex":"([0-9]{6,})"},"detailTarja":".tarja","detailForm":".forma","detailRoute":".via","detailQuantity":".quantity","detailActiveIngredients":{"selector":".ingredientes li","multiple":true}}}]
+```
+
+Os 4 sites podem ser cadastrados nessa mesma lista, um objeto por fonte.
 
 ### 2. instalar dependencias
 
@@ -172,6 +191,22 @@ Com o `.env` atual deste repositorio, a aplicacao sobe em:
 ```text
 http://localhost:4029
 ```
+
+### 5. consultar um EAN sem subir a API
+
+Se voce quiser testar so a logica de enriquecimento antes de mexer no backend inteiro, rode:
+
+```powershell
+npm.cmd run lookup:ean -- 7891058017507
+```
+
+Voce tambem pode passar um nome bruto como segundo argumento:
+
+```powershell
+npm.cmd run lookup:ean -- 7891058017507 "Dorflex 36 comprimidos"
+```
+
+Esse script nao usa Postgres. Ele apenas consulta as fontes configuradas e imprime o resultado no terminal em JSON.
 
 ## Endpoints
 

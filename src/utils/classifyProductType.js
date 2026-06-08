@@ -21,6 +21,10 @@ const COMMERCIAL_PERFUMARIA_KEYWORDS = [
   "cotonete",
   "cosmetico",
   "perfume",
+  "camisinha",
+  "preservativo",
+  "preservativos",
+  "lubrificante",
 ];
 
 const PERFUMARIA_CONTEXT_KEYWORDS = [
@@ -40,7 +44,10 @@ function classifyProductType({ raw = {}, ptResult = null, searchResult = null, d
   const joinedText = normalizeText([
     raw.tipo,
     raw.categoria,
+    raw.subcategoria,
     raw.departamento,
+    raw.segmento,
+    raw.subsegmento,
     raw.grupo,
     raw.nome,
     raw.nome_produto,
@@ -55,6 +62,9 @@ function classifyProductType({ raw = {}, ptResult = null, searchResult = null, d
     info.apresentacao,
     info.classe,
     info.categoria,
+    info.subcategoria,
+    info.segmento,
+    info.subsegmento,
     info.forma_farmaceutica,
     info.tarja,
     info.tipo_receita,
@@ -69,12 +79,19 @@ function classifyProductType({ raw = {}, ptResult = null, searchResult = null, d
     return "perfumaria";
   }
 
-  const incomingType = normalizeText(raw.tipo || raw.categoria || raw.departamento);
+  const incomingType = normalizeText(
+    raw.tipo
+    || raw.categoria
+    || raw.subcategoria
+    || raw.departamento
+    || raw.segmento
+    || raw.subsegmento,
+  );
   if (incomingType.includes("medic")) {
     return "medicamento";
   }
 
-  if (searchResult || detail?.info?.medicamentoid) {
+  if (detail?.info?.medicamentoid) {
     return "medicamento";
   }
 

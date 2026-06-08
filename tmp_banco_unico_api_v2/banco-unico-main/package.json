@@ -1,0 +1,28 @@
+{
+  "name": "banco_unico",
+  "version": "1.0.0",
+  "description": "Servidor Express para um banco unico com Postgres, pgvector e busca baseada em tokens.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev:db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres",
+    "dev:db:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml stop postgres",
+    "dev:db:logs": "docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f postgres",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "node scripts/check.js",
+    "reprocess:products": "node scripts/reprocess-products.js",
+    "benchmark:search-quality": "node scripts/evaluate-search-quality.js",
+    "benchmark:load": "node scripts/load-test.js",
+    "test": "NODE_ENV=test node --test --test-concurrency=1 test/*.test.js",
+    "test:coverage": "NODE_ENV=test node --test --test-concurrency=1 --experimental-test-coverage test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
+}

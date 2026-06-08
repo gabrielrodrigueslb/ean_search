@@ -1,0 +1,591 @@
+{
+  "metadata": {
+    "name": "search-quality-starter-suite",
+    "description": "Suite inicial para medir qualidade de busca semantica e lexical em catalogo farmaceutico.",
+    "defaultRequestLimit": 10,
+    "notes": [
+      "Os casos abaixo foram montados como suite inicial.",
+      "Ajuste ou remova consultas de produtos que nao existirem no seu catalogo.",
+      "Para producao, complemente isso com as consultas reais mais frequentes dos usuarios."
+    ]
+  },
+  "cases": [
+    {
+      "id": "exact-001",
+      "category": "nome-exato",
+      "query": "dipirona",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["dipirona"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-002",
+      "category": "nome-exato",
+      "query": "paracetamol",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["paracetamol"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-003",
+      "category": "nome-exato",
+      "query": "ibuprofeno",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["ibuprofeno"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-004",
+      "category": "nome-exato",
+      "query": "omeprazol",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["omeprazol"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-005",
+      "category": "nome-exato",
+      "query": "loratadina",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["loratadina"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-006",
+      "category": "nome-exato",
+      "query": "amoxicilina",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["amoxicilina"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-007",
+      "category": "nome-exato",
+      "query": "azitromicina",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["azitromicina"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-008",
+      "category": "nome-exato",
+      "query": "nimesulida",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["nimesulida"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-009",
+      "category": "nome-exato",
+      "query": "diclofenaco",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["diclofenaco"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-010",
+      "category": "nome-exato",
+      "query": "losartana",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["losartana"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-011",
+      "category": "nome-exato",
+      "query": "cetoconazol",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["cetoconazol"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-012",
+      "category": "nome-exato",
+      "query": "pantoprazol",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["pantoprazol"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-013",
+      "category": "nome-exato",
+      "query": "metformina",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["metformina"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+    {
+      "id": "exact-014",
+      "category": "nome-exato",
+      "query": "sinvastatina",
+      "expectedTopK": 1,
+      "matchers": [{ "allOf": ["sinvastatina"] }],
+      "notes": "Busca exata por principio ativo."
+    },
+
+    {
+      "id": "typo-001",
+      "category": "typo",
+      "query": "dirpirona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["dipirona"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-002",
+      "category": "typo",
+      "query": "diprona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["dipirona"] }],
+      "notes": "Erro de omissao de letra."
+    },
+    {
+      "id": "typo-003",
+      "category": "typo",
+      "query": "paracetamal",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["paracetamol"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-004",
+      "category": "typo",
+      "query": "iboprofeno",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["ibuprofeno"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-005",
+      "category": "typo",
+      "query": "amoxilina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["amoxicilina"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-006",
+      "category": "typo",
+      "query": "azitromicinaa",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["azitromicina"] }],
+      "notes": "Erro de repeticao de letra."
+    },
+    {
+      "id": "typo-007",
+      "category": "typo",
+      "query": "omeprazou",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["omeprazol"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-008",
+      "category": "typo",
+      "query": "loratidina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["loratadina"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-009",
+      "category": "typo",
+      "query": "nimesolida",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["nimesulida"] }],
+      "notes": "Erro de substituicao de vogal."
+    },
+    {
+      "id": "typo-010",
+      "category": "typo",
+      "query": "diclofenacoo",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["diclofenaco"] }],
+      "notes": "Erro de repeticao de letra."
+    },
+    {
+      "id": "typo-011",
+      "category": "typo",
+      "query": "losartan",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["losartana"] }],
+      "notes": "Erro de omissao de letra."
+    },
+    {
+      "id": "typo-012",
+      "category": "typo",
+      "query": "cetoconasoll",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["cetoconazol"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-013",
+      "category": "typo",
+      "query": "pantoprasol",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["pantoprazol"] }],
+      "notes": "Erro de digitacao simples."
+    },
+    {
+      "id": "typo-014",
+      "category": "typo",
+      "query": "sinvastatinaa",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["sinvastatina"] }],
+      "notes": "Erro de repeticao de letra."
+    },
+
+    {
+      "id": "active-001",
+      "category": "principio-ativo",
+      "query": "dipirona monoidratada",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["dipirona", "monoidratada"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-002",
+      "category": "principio-ativo",
+      "query": "losartana potassica",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["losartana", "potassica"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-003",
+      "category": "principio-ativo",
+      "query": "maleato de dexclorfeniramina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["dexclorfeniramina"] }],
+      "notes": "Principio ativo de antialergico."
+    },
+    {
+      "id": "active-004",
+      "category": "principio-ativo",
+      "query": "diclofenaco dietilamonio",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["diclofenaco", "dietilamonio"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-005",
+      "category": "principio-ativo",
+      "query": "amoxicilina triidratada",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["amoxicilina"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-006",
+      "category": "principio-ativo",
+      "query": "azitromicina diidratada",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["azitromicina"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-007",
+      "category": "principio-ativo",
+      "query": "cloridrato de metformina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["metformina"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-008",
+      "category": "principio-ativo",
+      "query": "pantoprazol sodico",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["pantoprazol"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-009",
+      "category": "principio-ativo",
+      "query": "sinvastatina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["sinvastatina"] }],
+      "notes": "Principio ativo especifico."
+    },
+    {
+      "id": "active-010",
+      "category": "principio-ativo",
+      "query": "cetoconazol",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["cetoconazol"] }],
+      "notes": "Principio ativo especifico."
+    },
+
+    {
+      "id": "compound-001",
+      "category": "composto",
+      "query": "paracetamol codeina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["paracetamol", "codeina"] }],
+      "notes": "Associacao de analgesicos."
+    },
+    {
+      "id": "compound-002",
+      "category": "composto",
+      "query": "etinilestradiol levonorgestrel",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["etinilestradiol", "levonorgestrel"] }],
+      "notes": "Associacao comum de anticoncepcional."
+    },
+    {
+      "id": "compound-003",
+      "category": "composto",
+      "query": "amoxicilina clavulanato",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["amoxicilina", "clavulanato"] }],
+      "notes": "Associacao com acido clavulanico."
+    },
+    {
+      "id": "compound-004",
+      "category": "composto",
+      "query": "sulfametoxazol trimetoprima",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["sulfametoxazol", "trimetoprima"] }],
+      "notes": "Associacao de antibioticos."
+    },
+    {
+      "id": "compound-005",
+      "category": "composto",
+      "query": "losartana hidroclorotiazida",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["losartana", "hidroclorotiazida"] }],
+      "notes": "Associacao para hipertensao."
+    },
+    {
+      "id": "compound-006",
+      "category": "composto",
+      "query": "dipropionato de betametasona acido salicilico",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["betametasona", "salicilico"] }],
+      "notes": "Associacao usada em dermatologia."
+    },
+    {
+      "id": "compound-007",
+      "category": "composto",
+      "query": "fenoterol ipratropio",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["fenoterol", "ipratropio"] }],
+      "notes": "Associacao para inalacao."
+    },
+    {
+      "id": "compound-008",
+      "category": "composto",
+      "query": "neomicina bacitracina",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["neomicina", "bacitracina"] }],
+      "notes": "Associacao topica."
+    },
+    {
+      "id": "compound-009",
+      "category": "composto",
+      "query": "dexclorfeniramina betametasona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["dexclorfeniramina", "betametasona"] }],
+      "notes": "Associacao anti-alergica."
+    },
+    {
+      "id": "compound-010",
+      "category": "composto",
+      "query": "escopolamina dipirona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["escopolamina", "dipirona"] }],
+      "notes": "Associacao para colica e dor."
+    },
+
+    {
+      "id": "intent-001",
+      "category": "intencao",
+      "query": "remedio para dor e febre",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["dipirona"] },
+        { "allOf": ["paracetamol"] },
+        { "allOf": ["ibuprofeno"] }
+      ],
+      "notes": "Intencao analgesica e antipiretica."
+    },
+    {
+      "id": "intent-002",
+      "category": "intencao",
+      "query": "antiinflamatorio para dor muscular",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["ibuprofeno"] },
+        { "allOf": ["diclofenaco"] },
+        { "allOf": ["nimesulida"] }
+      ],
+      "notes": "Intencao anti-inflamatoria."
+    },
+    {
+      "id": "intent-003",
+      "category": "intencao",
+      "query": "antibiotico para garganta",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["amoxicilina"] },
+        { "allOf": ["azitromicina"] }
+      ],
+      "notes": "Intencao de antibiotico oral."
+    },
+    {
+      "id": "intent-004",
+      "category": "intencao",
+      "query": "remedio para azia e refluxo",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["omeprazol"] },
+        { "allOf": ["pantoprazol"] }
+      ],
+      "notes": "Intencao de protetor gastrico."
+    },
+    {
+      "id": "intent-005",
+      "category": "intencao",
+      "query": "antialergico para rinite",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["loratadina"] },
+        { "allOf": ["dexclorfeniramina"] }
+      ],
+      "notes": "Intencao de antialergico."
+    },
+    {
+      "id": "intent-006",
+      "category": "intencao",
+      "query": "pomada para micose",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["cetoconazol"] },
+        { "allOf": ["clotrimazol"] }
+      ],
+      "notes": "Intencao dermatologica."
+    },
+    {
+      "id": "intent-007",
+      "category": "intencao",
+      "query": "anticoncepcional oral",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["etinilestradiol", "levonorgestrel"] },
+        { "allOf": ["etinilestradiol", "desogestrel"] }
+      ],
+      "notes": "Intencao de anticoncepcional."
+    },
+    {
+      "id": "intent-008",
+      "category": "intencao",
+      "query": "remedio para pressao alta",
+      "expectedTopK": 5,
+      "matchers": [
+        { "allOf": ["losartana"] },
+        { "allOf": ["losartana", "hidroclorotiazida"] }
+      ],
+      "notes": "Intencao de antihipertensivo."
+    },
+
+    {
+      "id": "ean-001",
+      "category": "ean",
+      "query": "7891058021580",
+      "expectedTopK": 1,
+      "matchers": [{ "ean": "7891058021580" }],
+      "notes": "Anador 500mg/ml Solucao 20 ml."
+    },
+    {
+      "id": "ean-002",
+      "category": "ean",
+      "query": "7897322701486",
+      "expectedTopK": 1,
+      "matchers": [{ "ean": "7897322701486" }],
+      "notes": "Magnopyrol 500mg/ml Solucao 10 ml."
+    },
+    {
+      "id": "ean-003",
+      "category": "ean",
+      "query": "7896094919396",
+      "expectedTopK": 1,
+      "matchers": [{ "ean": "7896094919396" }],
+      "notes": "Lisador DIP 500mg/ml Solucao 20 ml."
+    },
+    {
+      "id": "ean-004",
+      "category": "ean",
+      "query": "7891142142214",
+      "expectedTopK": 1,
+      "matchers": [{ "ean": "7891142142214" }],
+      "notes": "Diprosalic 0,64mg/g + 30mg/g Pomada."
+    },
+
+    {
+      "id": "brand-001",
+      "category": "marca-principio",
+      "query": "anador dipirona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["anador", "dipirona"] }],
+      "notes": "Marca mais principio ativo."
+    },
+    {
+      "id": "brand-002",
+      "category": "marca-principio",
+      "query": "magnopyrol dipirona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["magnopyrol", "dipirona"] }],
+      "notes": "Marca mais principio ativo."
+    },
+    {
+      "id": "brand-003",
+      "category": "marca-principio",
+      "query": "lisador dip dipirona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["lisador", "dipirona"] }],
+      "notes": "Marca mais principio ativo."
+    },
+    {
+      "id": "brand-004",
+      "category": "marca-principio",
+      "query": "diprosalic betametasona",
+      "expectedTopK": 3,
+      "matchers": [{ "allOf": ["diprosalic"], "anyOf": ["betametasona", "salicilico"] }],
+      "notes": "Marca mais principio ativo composto."
+    },
+
+    {
+      "id": "maker-001",
+      "category": "fabricante-classe",
+      "query": "ems generico paracetamol",
+      "expectedTopK": 5,
+      "matchers": [{ "allOf": ["ems", "paracetamol"], "anyOf": ["generico"] }],
+      "notes": "Fabricante + classe + principio ativo."
+    },
+    {
+      "id": "maker-002",
+      "category": "fabricante-classe",
+      "query": "medley generico ibuprofeno",
+      "expectedTopK": 5,
+      "matchers": [{ "allOf": ["medley", "ibuprofeno"], "anyOf": ["generico"] }],
+      "notes": "Fabricante + classe + principio ativo."
+    },
+    {
+      "id": "maker-003",
+      "category": "fabricante-classe",
+      "query": "neo quimica generico dipirona",
+      "expectedTopK": 5,
+      "matchers": [{ "allOf": ["neo quimica", "dipirona"], "anyOf": ["generico"] }],
+      "notes": "Fabricante + classe + principio ativo."
+    },
+    {
+      "id": "maker-004",
+      "category": "fabricante-classe",
+      "query": "cosmed analgesico dipirona",
+      "expectedTopK": 5,
+      "matchers": [{ "allOf": ["cosmed", "dipirona"], "anyOf": ["analgesicos", "antipireticos"] }],
+      "notes": "Fabricante + classe + principio ativo."
+    }
+  ]
+}

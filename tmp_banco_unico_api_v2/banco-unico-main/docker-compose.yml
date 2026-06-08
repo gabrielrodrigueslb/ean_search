@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg16
+    container_name: banco_unico_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-banco_unico}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-banco_unico}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: banco_unico_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-3000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-banco_unico}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_SSL: "false"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      OPENAI_INTELLIGENT_SEARCH_MODEL: ${OPENAI_INTELLIGENT_SEARCH_MODEL:-gpt-4o-mini}
+      OPENAI_PRODUCT_RELEVANCE_MODEL: ${OPENAI_PRODUCT_RELEVANCE_MODEL:-gpt-4o-mini}
+      VECTOR_DIMENSIONS: ${VECTOR_DIMENSIONS:-512}
+      DEFAULT_SEARCH_LIMIT: ${DEFAULT_SEARCH_LIMIT:-10}
+      MAX_SEARCH_LIMIT: ${MAX_SEARCH_LIMIT:-50}
+      MAX_TOKENS_PER_PRODUCT: ${MAX_TOKENS_PER_PRODUCT:-256}
+      DEFAULT_INCLUDE_RELEVANCE_SCORE: ${DEFAULT_INCLUDE_RELEVANCE_SCORE:-false}
+      INTEGRATION_REQUEST_TIMEOUT_MS: ${INTEGRATION_REQUEST_TIMEOUT_MS:-15000}
+      UPSERT_BATCH_SIZE: ${UPSERT_BATCH_SIZE:-1000}
+      MAX_RETURNED_PRODUCTS: ${MAX_RETURNED_PRODUCTS:-100}
+      ALPHA7_API_BASE_URL: ${ALPHA7_API_BASE_URL:-}
+      ALPHA7_CONSULTAR_EANS_PATH: ${ALPHA7_CONSULTAR_EANS_PATH:-/api/consultar-eans}
+      ALPHA7_AUTH_HEADER_NAME: ${ALPHA7_AUTH_HEADER_NAME:-x-api-key}
+      ALPHA7_AUTH_PREFIX: ${ALPHA7_AUTH_PREFIX:-}
+      ALPHA7_TIMEOUT_MS: ${ALPHA7_TIMEOUT_MS:-15000}
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+
+volumes:
+  postgres_data:

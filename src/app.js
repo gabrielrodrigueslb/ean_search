@@ -1,5 +1,6 @@
 import express from "express";
 import importRoutes from "./routes/import.routes.js";
+import lookupRoutes from "./routes/lookup.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 function createApp() {
@@ -14,6 +15,7 @@ function createApp() {
   });
 
   app.use("/imports", importRoutes);
+  app.use("/lookup", lookupRoutes);
 
   app.use(errorHandler);
 

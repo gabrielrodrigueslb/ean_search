@@ -1,6 +1,15 @@
 import { classifyProductType } from "../utils/classifyProductType.js";
+import env from "../config/env.js";
 import { normalizeText } from "../utils/normalizeText.js";
 import { createDefaultProductLookupSourceRegistry } from "../providers/default-registries.js";
+import {
+  formatSourceLabel,
+  formatSourceList,
+  isPassThroughSource,
+  isTrustedNameSource,
+  normalizeSourceKey,
+  normalizeSourceKeys,
+} from "../utils/productSourcePolicy.js";
 function pickFirstString(...values) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -15,18 +24,43 @@ function slugify(value) {
   return normalizeText(value).replace(/\s+/g, "-");
 }
 
-function isTrustedNameSource(source) {
-  return source === "convertize"
-    || source === "farmaindex";
-}
+function extractDoseFromText(value) {
+  const text = pickFirstString(value);
+  if (!text) {
+    return null;
+  }
 
-function isPassThroughSource(source) {
-  return source === "vtex";
+  const compactText = text.replace(/\s+/g, " ").trim();
+  if (compactText.length > 160) {
+    return null;
+  }
+
+  const match = compactText.match(
+    /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|kg|ml|l|ui|mui|meq|%)(?:\s*\/\s*\d+(?:[.,]\d+)?\s*(?:ml|g|l))?(?:\s*\+\s*\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|kg|ml|l|ui|mui|meq|%)(?:\s*\/\s*\d+(?:[.,]\d+)?\s*(?:ml|g|l))?)*/i,
+  );
+
+  return pickFirstString(match?.[0]);
 }
 
 class EnrichmentService {
-  constructor({ lookupSourceRegistry } = {}) {
+  constructor({
+    lookupSourceRegistry,
+    trustedNameSources = env.lookupTrustedNameSources,
+    preferredNameSources = env.lookupPreferredNameSources,
+    preferredDataSources = env.lookupPreferredDataSources,
+    passThroughSources = env.lookupPassThroughSources,
+  } = {}) {
     this.lookupSourceRegistry = lookupSourceRegistry || createDefaultProductLookupSourceRegistry();
+    this.trustedNameSources = normalizeSourceKeys(trustedNameSources);
+    this.preferredNameSources = normalizeSourceKeys([
+      ...preferredNameSources,
+      ...this.trustedNameSources,
+    ]);
+    this.preferredDataSources = normalizeSourceKeys([
+      ...preferredDataSources,
+      ...this.trustedNameSources,
+    ]);
+    this.passThroughSources = normalizeSourceKeys(passThroughSources);
   }
 
   createSession() {
@@ -39,14 +73,18 @@ class EnrichmentService {
     const ean = String(item.ean || "");
     const { resolution, cacheHit } = await this.getResolutionForEan(ean, session);
     const {
-      convertizeLookup,
-      convertizeResult,
-      searchLookup,
-      searchResult,
+      lookups,
+      nameLookup,
+      dataLookup,
       detail,
     } = resolution;
+    const hasAnyLookupMatch = this.anyLookupMatched(lookups);
+    const fontesConsultadas = {
+      ...this.buildLookupStatus(lookups),
+      cache_hit: cacheHit,
+    };
 
-    if (!searchResult && !convertizeResult) {
+    if (!hasAnyLookupMatch) {
       const raw = item.dados_brutos || item;
       const source = raw?.origem_nome || raw?.origem_dados || item?.fonte || null;
       const fallbackName = pickFirstString(
@@ -56,7 +94,9 @@ class EnrichmentService {
         item?.nome_recebido,
       );
 
-      if (isPassThroughSource(source) && fallbackName) {
+      if (this.isPassThroughSource(source) && fallbackName) {
+        const normalizedSource = normalizeSourceKey(source);
+
         return {
           item: {
             ...item,
@@ -66,30 +106,22 @@ class EnrichmentService {
               nome: pickFirstString(raw?.nome, fallbackName),
               nome_produto: pickFirstString(raw?.nome_produto, fallbackName),
               nome_exibicao: pickFirstString(raw?.nome_exibicao, fallbackName),
-              origem_nome: "vtex",
-              origem_dados: raw?.origem_dados || "vtex",
+              origem_nome: normalizedSource,
+              origem_dados: raw?.origem_dados || normalizedSource,
             },
           },
           enriched: true,
           requiresApproval: false,
           approvalReason: null,
           fontes_consultadas: {
-            convertize_busca: Boolean(convertizeResult),
-            convertize_busca_error: convertizeLookup.error,
-            farmaindex_busca: Boolean(searchResult),
-            farmaindex_busca_error: searchLookup.error,
-            farmaindex_detalhe: false,
-            cache_hit: cacheHit,
+            ...fontesConsultadas,
             encontrado: true,
-            pass_through_source: "vtex",
+            pass_through_source: normalizedSource,
           },
         };
       }
 
-      const approvalReason = this.buildApprovalReason({
-        convertizeLookup,
-        searchLookup,
-      });
+      const approvalReason = this.buildApprovalReason({ lookups });
 
       return {
         item: {
@@ -104,12 +136,7 @@ class EnrichmentService {
         requiresApproval: true,
         approvalReason,
         fontes_consultadas: {
-          convertize_busca: Boolean(convertizeResult),
-          convertize_busca_error: convertizeLookup.error,
-          farmaindex_busca: Boolean(searchResult),
-          farmaindex_busca_error: searchLookup.error,
-          farmaindex_detalhe: false,
-          cache_hit: cacheHit,
+          ...fontesConsultadas,
           encontrado: false,
         },
       };
@@ -117,10 +144,11 @@ class EnrichmentService {
 
     const snapshot = this.buildSnapshot({
       item,
-      convertizeResult,
-      searchResult,
+      nameLookup,
+      dataLookup,
       detail,
     });
+    const trustedNameResolved = this.isTrustedNameSource(snapshot.dados_brutos.origem_nome);
 
     return {
       item: {
@@ -132,17 +160,12 @@ class EnrichmentService {
         },
       },
       enriched: true,
-      requiresApproval: !isTrustedNameSource(snapshot.dados_brutos.origem_nome),
-      approvalReason: isTrustedNameSource(snapshot.dados_brutos.origem_nome)
+      requiresApproval: !trustedNameResolved,
+      approvalReason: trustedNameResolved
         ? null
-        : "Nome nao resolvido por Convertize ou FarmaIndex.",
+        : `Nome nao resolvido por ${formatSourceList(this.trustedNameSources)}.`,
       fontes_consultadas: {
-        convertize_busca: Boolean(convertizeResult),
-        convertize_busca_error: convertizeLookup.error,
-        farmaindex_busca: Boolean(searchResult),
-        farmaindex_busca_error: searchLookup.error,
-        farmaindex_detalhe: Boolean(detail),
-        cache_hit: cacheHit,
+        ...fontesConsultadas,
         encontrado: true,
       },
     };
@@ -180,19 +203,29 @@ class EnrichmentService {
   }
 
   async resolveExternalSources(ean) {
-    const lookups = await this.lookupSourceRegistry.lookupByEan(ean);
-    const convertizeLookup = lookups.convertize || this.emptyLookup();
-    const searchLookup = lookups.farmaindex || this.emptyLookup();
-    const convertizeResult = convertizeLookup.result;
-    const searchResult = searchLookup.result;
-    const detail = searchLookup.detail || null;
+    const lookups = this.normalizeLookups(await this.lookupSourceRegistry.lookupByEan(ean));
+    const nameLookup = this.pickPreferredLookup(
+      lookups,
+      this.preferredNameSources,
+      (lookup) => Boolean(this.getLookupPrimaryName(lookup)),
+    ) || this.pickFirstLookup(lookups, (lookup) => Boolean(this.getLookupPrimaryName(lookup)));
+    const detailLookup = this.pickPreferredLookup(
+      lookups,
+      this.preferredDataSources,
+      (lookup) => Boolean(lookup.detail),
+    ) || this.pickFirstLookup(lookups, (lookup) => Boolean(lookup.detail));
+    const fallbackDataLookup = this.pickPreferredLookup(
+      lookups,
+      this.preferredDataSources,
+      (lookup) => this.lookupHasMatch(lookup),
+    ) || this.pickFirstLookup(lookups, (lookup) => this.lookupHasMatch(lookup));
+    const dataLookup = detailLookup || fallbackDataLookup || nameLookup || null;
 
     return {
-      convertizeLookup,
-      convertizeResult,
-      searchLookup,
-      searchResult,
-      detail,
+      lookups,
+      nameLookup: nameLookup || dataLookup || null,
+      dataLookup,
+      detail: dataLookup?.detail || null,
     };
   }
 
@@ -201,6 +234,8 @@ class EnrichmentService {
       result: null,
       detail: null,
       error: null,
+      skipped: false,
+      skip_reason: null,
     };
   }
 
@@ -212,26 +247,139 @@ class EnrichmentService {
     return JSON.parse(JSON.stringify(value));
   }
 
-  buildApprovalReason({ convertizeLookup, searchLookup }) {
+  normalizeLookups(lookups = {}) {
+    return Object.fromEntries(
+      Object.entries(lookups || {}).map(([sourceKey, lookup]) => [
+        sourceKey,
+        {
+          key: lookup?.key || sourceKey,
+          result: lookup?.result || null,
+          detail: lookup?.detail || null,
+          error: lookup?.error || null,
+          skipped: lookup?.skipped === true,
+          skip_reason: lookup?.skip_reason || null,
+        },
+      ]),
+    );
+  }
+
+  getOrderedSourceKeys(lookups = {}) {
+    const activeKeys = Object.keys(lookups);
+
+    return normalizeSourceKeys([
+      ...this.preferredNameSources,
+      ...this.preferredDataSources,
+      ...activeKeys,
+    ]).filter((sourceKey) => activeKeys.includes(sourceKey));
+  }
+
+  pickPreferredLookup(lookups = {}, sourcePriority = [], predicate = null) {
+    for (const sourceKey of normalizeSourceKeys(sourcePriority)) {
+      const lookup = lookups[sourceKey];
+
+      if (!lookup) {
+        continue;
+      }
+
+      if (!predicate || predicate(lookup)) {
+        return lookup;
+      }
+    }
+
+    return null;
+  }
+
+  pickFirstLookup(lookups = {}, predicate = null) {
+    for (const sourceKey of this.getOrderedSourceKeys(lookups)) {
+      const lookup = lookups[sourceKey];
+
+      if (!lookup) {
+        continue;
+      }
+
+      if (!predicate || predicate(lookup)) {
+        return lookup;
+      }
+    }
+
+    return null;
+  }
+
+  lookupHasMatch(lookup) {
+    return Boolean(lookup?.result || lookup?.detail);
+  }
+
+  anyLookupMatched(lookups = {}) {
+    return Object.values(lookups).some((lookup) => this.lookupHasMatch(lookup));
+  }
+
+  getLookupPrimaryName(lookup) {
+    if (!lookup) {
+      return null;
+    }
+
+    return pickFirstString(
+      lookup?.result?.nome,
+      lookup?.result?.nome_produto,
+      lookup?.result?.produto,
+      lookup?.result?.title,
+      lookup?.result?.name,
+      lookup?.detail?.info?.produto,
+    );
+  }
+
+  getLookupDisplayName(lookup) {
+    if (!lookup) {
+      return null;
+    }
+
+    return pickFirstString(
+      lookup?.result?.nome_exibicao,
+      lookup?.result?.display_name,
+      lookup?.result?.nome,
+      [lookup?.result?.produto, lookup?.result?.apresentacao].filter(Boolean).join(" ").trim(),
+      [lookup?.detail?.info?.produto, lookup?.detail?.info?.apresentacao].filter(Boolean).join(" ").trim(),
+    );
+  }
+
+  buildLookupMetricKey(sourceKey) {
+    return normalizeSourceKey(sourceKey).replace(/[^a-z0-9]+/g, "_");
+  }
+
+  buildLookupStatus(lookups = {}) {
+    return this.getOrderedSourceKeys(lookups).reduce((acc, sourceKey) => {
+      const lookup = lookups[sourceKey];
+      const metricKey = this.buildLookupMetricKey(sourceKey);
+
+      acc[`${metricKey}_busca`] = Boolean(lookup?.result);
+      acc[`${metricKey}_busca_error`] = lookup?.error || null;
+      acc[`${metricKey}_detalhe`] = Boolean(lookup?.detail);
+      acc[`${metricKey}_skipped`] = lookup?.skipped === true;
+      acc[`${metricKey}_skip_reason`] = lookup?.skip_reason || null;
+
+      return acc;
+    }, {});
+  }
+
+  buildApprovalReason({ lookups }) {
     const reasons = [];
 
-    if (convertizeLookup?.result) {
-      reasons.push("Convertize encontrou resultado.");
-    } else if (convertizeLookup?.error) {
-      reasons.push(`Convertize falhou: ${convertizeLookup.error}`);
-    } else {
-      reasons.push("Convertize sem resultado.");
+    for (const sourceKey of this.getOrderedSourceKeys(lookups)) {
+      const lookup = lookups[sourceKey];
+      const label = formatSourceLabel(sourceKey);
+
+      if (this.lookupHasMatch(lookup)) {
+        reasons.push(`${label} encontrou resultado.`);
+      } else if (lookup?.skipped) {
+        reasons.push(`${label} nao foi consultada porque uma fonte anterior resolveu o EAN.`);
+      } else if (lookup?.error) {
+        reasons.push(`${label} falhou: ${lookup.error}`);
+      } else {
+        reasons.push(`${label} sem resultado.`);
+      }
     }
 
-    if (searchLookup?.result) {
-      reasons.push("FarmaIndex encontrou resultado.");
-    } else if (searchLookup?.error) {
-      reasons.push(`FarmaIndex falhou: ${searchLookup.error}`);
-    } else {
-      reasons.push("FarmaIndex sem resultado.");
-    }
-
-    return reasons.join(" ");
+    return reasons.join(" ") || "Nenhuma fonte externa configurada.";
   }
 
   buildSnapshot({
@@ -239,30 +387,70 @@ class EnrichmentService {
     convertizeResult = null,
     searchResult = null,
     detail = null,
+    nameLookup = null,
+    dataLookup = null,
   }) {
-    const info = detail?.info || {};
     const raw = item.dados_brutos || item;
-    const tipoFallback = this.resolveTipo({ raw, ptResult: null, searchResult, detail });
-    const trustedRawName = isTrustedNameSource(raw.origem_nome)
+    const legacyConvertizeLookup = convertizeResult
+      ? {
+        key: "convertize",
+        result: convertizeResult,
+        detail: null,
+        error: null,
+      }
+      : null;
+    const legacyFarmaIndexLookup = (searchResult || detail)
+      ? {
+        key: "farmaindex",
+        result: searchResult,
+        detail,
+        error: null,
+      }
+      : null;
+    const resolvedNameLookup = nameLookup || legacyConvertizeLookup || legacyFarmaIndexLookup;
+    const resolvedDataLookup = dataLookup || legacyFarmaIndexLookup || legacyConvertizeLookup;
+    const effectiveDetail = resolvedDataLookup?.detail || detail || null;
+    const structuredResult = resolvedDataLookup?.result || searchResult || null;
+    const info = effectiveDetail?.info || {};
+    const tipoFallback = this.resolveTipo({
+      raw,
+      ptResult: null,
+      searchResult: structuredResult,
+      detail: effectiveDetail,
+    });
+    const trustedRawName = this.isTrustedNameSource(raw.origem_nome)
       ? pickFirstString(raw.nome, raw.nome_produto, raw.nome_exibicao, item.nome_recebido)
       : null;
 
     const produtoNome = pickFirstString(
-      convertizeResult?.nome,
+      this.getLookupPrimaryName(resolvedNameLookup),
       info.produto,
-      searchResult?.produto,
+      this.getLookupPrimaryName(resolvedDataLookup),
       trustedRawName,
     );
 
     const nomeExibicao = pickFirstString(
-      convertizeResult?.nome,
+      this.getLookupDisplayName(resolvedNameLookup),
       [info.produto, info.apresentacao].filter(Boolean).join(" ").trim(),
-      [searchResult?.produto, searchResult?.apresentacao].filter(Boolean).join(" ").trim(),
+      this.getLookupDisplayName(resolvedDataLookup),
       trustedRawName,
       produtoNome,
     );
 
-    const farmacos = this.extractFarmacos(detail);
+    const farmacos = this.extractFarmacos(effectiveDetail);
+    const descricaoOriginal = pickFirstString(
+      info.descricao_original,
+      structuredResult?.descricao_original,
+      raw.descricao_original,
+      nomeExibicao,
+      produtoNome,
+    );
+    const ingredienteAtivo = pickFirstString(
+      info.ingrediente_ativo,
+      structuredResult?.ingrediente_ativo,
+      raw.ingrediente_ativo,
+      farmacos.map((farmaco) => farmaco.nome).filter(Boolean).join(", "),
+    );
 
     return {
       nome_recebido: nomeExibicao,
@@ -271,33 +459,67 @@ class EnrichmentService {
         nome: produtoNome,
         nome_produto: produtoNome,
         nome_exibicao: nomeExibicao,
-        descricao: pickFirstString(info.apresentacao, searchResult?.apresentacao, raw.descricao),
-        dose: pickFirstString(info.apresentacao, raw.dose),
+        descricao: pickFirstString(
+          info.descricao,
+          info.apresentacao,
+          structuredResult?.descricao,
+          structuredResult?.apresentacao,
+          raw.descricao,
+        ),
+        descricao_original: descricaoOriginal,
+        descricao_normalizada: pickFirstString(
+          info.descricao_normalizada,
+          structuredResult?.descricao_normalizada,
+          raw.descricao_normalizada,
+          descricaoOriginal ? normalizeText(descricaoOriginal) : null,
+        ),
+        dose: pickFirstString(
+          info.dose,
+          structuredResult?.dose,
+          raw.dose,
+          extractDoseFromText(info.apresentacao),
+          extractDoseFromText(structuredResult?.apresentacao),
+        ),
         unidade: pickFirstString(info.unidade, raw.unidade),
         forma_farmaceutica: pickFirstString(info.forma_farmaceutica, raw.forma_farmaceutica, raw.forma),
         via_administracao: pickFirstString(info.via_adm, raw.via_administracao),
-        quantidade: pickFirstString(info.qtde_fs, raw.quantidade),
+        quantidade: pickFirstString(info.qtde_fs, structuredResult?.quantidade, raw.quantidade),
         volume: pickFirstString(raw.volume),
         registro_ms: pickFirstString(info.registro, raw.registro_ms, raw.registro),
-        tarja: pickFirstString(info.tarja, searchResult?.tarja, raw.tarja),
-        laboratorio: pickFirstString(info.laboratorio, searchResult?.laboratorio, raw.laboratorio),
+        tarja: pickFirstString(info.tarja, structuredResult?.tarja, raw.tarja),
+        laboratorio: pickFirstString(info.laboratorio, structuredResult?.laboratorio, raw.laboratorio),
+        fabricante: pickFirstString(
+          info.fabricante,
+          structuredResult?.fabricante,
+          raw.fabricante,
+          info.laboratorio,
+          structuredResult?.laboratorio,
+        ),
+        departamento: pickFirstString(info.departamento, structuredResult?.departamento, raw.departamento),
         categoria: pickFirstString(info.classe, info.categoria, raw.categoria),
+        subcategoria: pickFirstString(info.subcategoria, structuredResult?.subcategoria, raw.subcategoria),
+        segmento: pickFirstString(info.segmento, structuredResult?.segmento, raw.segmento),
+        subsegmento: pickFirstString(info.subsegmento, structuredResult?.subsegmento, raw.subsegmento),
+        ingrediente_ativo: ingredienteAtivo || null,
         tipo: tipoFallback,
-        origem_nome: convertizeResult
-          ? "convertize"
-          : searchResult
-            ? "farmaindex"
-            : raw.origem_nome || null
-        ,
-        origem_dados: searchResult
-          ? "farmaindex"
-          : convertizeResult
-            ? "convertize"
-            : raw.origem_dados
-        ,
+        origem_nome: resolvedNameLookup?.key
+          || resolvedDataLookup?.key
+          || raw.origem_nome
+          || null,
+        origem_dados: resolvedDataLookup?.key
+          || resolvedNameLookup?.key
+          || raw.origem_dados,
         farmacos,
       },
     };
+  }
+
+  isTrustedNameSource(source) {
+    return isTrustedNameSource(source, this.trustedNameSources);
+  }
+
+  isPassThroughSource(source) {
+    return isPassThroughSource(source, this.passThroughSources);
   }
 
   resolveTipo({ raw, ptResult, searchResult, detail }) {

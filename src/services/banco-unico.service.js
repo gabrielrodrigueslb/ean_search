@@ -19,6 +19,11 @@ class BancoUnicoService {
       ...(product.classificacao ? { classificacao: product.classificacao } : {}),
       ...(product.nomeSocial ? { nomeSocial: product.nomeSocial } : {}),
       ...(product.fabricante ? { fabricante: product.fabricante } : {}),
+      ...(product.departamento ? { departamento: product.departamento } : {}),
+      ...(product.categoria ? { categoria: product.categoria } : {}),
+      ...(product.subcategoria ? { subcategoria: product.subcategoria } : {}),
+      ...(product.segmento ? { segmento: product.segmento } : {}),
+      ...(product.subsegmento ? { subsegmento: product.subsegmento } : {}),
       ...(product.detalhes ? { detalhes: product.detalhes } : {}),
     };
   }
@@ -37,6 +42,11 @@ class BancoUnicoService {
   async publishProducts(products, config = {}) {
     const client = this.createClient(config);
     return client.publishProducts(this.buildBatchPayload(products));
+  }
+
+  async searchProductsByEans(eans = [], config = {}) {
+    const client = this.createClient(config);
+    return client.searchProductsByEans(eans);
   }
 }
 

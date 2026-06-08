@@ -15,7 +15,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, Drogasil ou VTEX.");
   });
 
   test("monta documento unico para nome validado pela Convertize", () => {
@@ -28,13 +28,44 @@ describe("ProductService.buildSnapshot", () => {
         nome: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_produto: "Lencos Umedecidos Baby Wipes 500 Unidades",
         nome_exibicao: "Lencos Umedecidos Baby Wipes 500 Unidades",
+        departamento: "Higiene",
         categoria: "Higiene",
+        subcategoria: "Lencos Umedecidos",
+        segmento: "Infantil",
+        subsegmento: "Uso Diario",
+        catalogo_normalizado: {
+          ean: "7890000000001",
+          descricao_original: "Lencos Umedecidos Baby Wipes 500 Unidades",
+          descricao_normalizada: "lencos umedecidos baby wipes 500 unidades",
+          marca: "Baby Wipes",
+          fabricante: "Baby Wipes",
+          departamento: "Higiene",
+          categoria: "Higiene",
+          subcategoria: "Lencos Umedecidos",
+          segmento: "Infantil",
+          subsegmento: "Uso Diario",
+          principio_ativo: [],
+        },
       },
     });
 
     expect(snapshot.nomeSocial).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
     expect(snapshot.descricaoProduto).toBe("Lencos Umedecidos Baby Wipes 500 Unidades");
-    expect(snapshot.classificacao).toBe("Higiene");
+    expect(snapshot.classificacao).toBe("Lencos Umedecidos");
+    expect(snapshot.departamento).toBe("Higiene");
+    expect(snapshot.categoria).toBe("Higiene");
+    expect(snapshot.subcategoria).toBe("Lencos Umedecidos");
+    expect(snapshot.segmento).toBe("Infantil");
+    expect(snapshot.subsegmento).toBe("Uso Diario");
+    const detalhes = JSON.parse(snapshot.detalhes);
+    expect(detalhes.categoria).toBe("Higiene");
+    expect(detalhes.estrutura_final).toEqual(expect.objectContaining({
+      ean: "7890000000001",
+      categoria: "Higiene",
+      subcategoria: "Lencos Umedecidos",
+      segmento: "Infantil",
+      subsegmento: "Uso Diario",
+    }));
     expect(snapshot.debug_tokens.length).toBe(snapshot.debug_token_count);
     expect(snapshot.debug_embedding_dimensions).toBe(EMBEDDING_DIMENSIONS);
   });
@@ -45,7 +76,7 @@ describe("ProductService.buildSnapshot", () => {
       ean: "7896023705397",
       nome_recebido: "Agua Inglesa Frasco Com 500ml",
       dados_brutos: {
-        origem_nome: "farmaindex",
+        origem_nome: "drogasil",
         nome: "Agua Inglesa Frasco Com 500ml",
         nome_produto: "Agua Inglesa Frasco Com 500ml",
         nome_exibicao: "Agua Inglesa Frasco Com 500ml",
@@ -75,7 +106,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "ACETICIL 100MG ENV 10CP",
         nome_exibicao: "ACETICIL 100MG ENV 10CP",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, Drogasil ou VTEX.");
   });
 
   test("aceita nome vindo da vtex quando for pass-through operacional", () => {
