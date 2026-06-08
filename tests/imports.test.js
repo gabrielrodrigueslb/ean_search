@@ -39,12 +39,49 @@ describe("GET /imports/:id", () => {
     expect(getImportacao).not.toHaveBeenCalled();
   });
 
-  test("retorna importacao com alias importacao_id", async () => {
+  test("retorna importacao com resumo enxuto dos nao encontrados", async () => {
     const app = createApp();
     getImportacao.mockResolvedValue({
       id: 7,
       status: "processing",
-      itens: [],
+      total_itens: 3,
+      itens_sucesso: 1,
+      itens: [
+        {
+          ean: "7890010000403",
+          nome_recebido: "DES. AXE AERO APOLO 97G",
+          status: "review",
+          dados_brutos: {
+            nome_exibicao: "DES. AXE AERO APOLO 97G",
+          },
+          fontes_consultadas: {
+            approval_required: true,
+            encontrado: false,
+          },
+        },
+        {
+          ean: "7891058017507",
+          nome_recebido: "Dorflex",
+          status: "enriched",
+          dados_brutos: {
+            nome_exibicao: "Dorflex",
+          },
+          fontes_consultadas: {
+            action: "skipped_existing_in_banco_unico",
+          },
+        },
+        {
+          ean: "7891234567890",
+          nome_recebido: "Produto ok",
+          status: "enriched",
+          dados_brutos: {
+            nome_exibicao: "Produto ok",
+          },
+          fontes_consultadas: {
+            encontrado: true,
+          },
+        },
+      ],
     });
 
     const response = await request(app).get("/imports/7");
@@ -52,8 +89,20 @@ describe("GET /imports/:id", () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       id: 7,
-      importacao_id: 7,
       status: "processing",
+    });
+    expect(response.body.itens).toBeUndefined();
+    expect(response.body.aprovacoes).toBeUndefined();
+    expect(response.body.fallbacks).toBeUndefined();
+    expect(response.body.fallbacks_vtex).toBeUndefined();
+    expect(response.body.resumo).toEqual({
+      total_produtos_nao_encontrados: 1,
+      produtos_nao_encontrados: [
+        {
+          ean: "7890010000403",
+          nome: "DES. AXE AERO APOLO 97G",
+        },
+      ],
     });
     expect(getImportacao).toHaveBeenCalledWith(7);
   });

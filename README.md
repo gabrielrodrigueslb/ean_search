@@ -177,9 +177,14 @@ Os 4 sites podem ser cadastrados nessa mesma lista, um objeto por fonte.
 - `OPENAI_WEB_LOOKUP_ENABLED=true` adiciona a OpenAI com busca web como ultimo fallback, apenas depois das fontes API/scraping configuradas falharem.
 - `OPENAI_WEB_LOOKUP_MODEL` define o modelo usado no fallback web.
 - `OPENAI_WEB_LOOKUP_MIN_CONFIDENCE` define a confianca minima para aceitar o resultado estruturado da IA.
+- `OPENAI_WEB_LOOKUP_MAX_RETRIES` define quantas tentativas extras a busca web pode fazer em erros transitorios como `429`.
+- `OPENAI_WEB_LOOKUP_RETRY_BASE_DELAY_MS` define o atraso inicial entre retries.
+- `OPENAI_WEB_LOOKUP_RETRY_MAX_DELAY_MS` limita o atraso maximo entre retries.
 - `OPENAI_WEB_LOOKUP_ALLOWED_DOMAINS=dominio1.com,dominio2.com` opcionalmente restringe os dominios consultados pela busca web.
 
 Por seguranca operacional, `openai_web` nao entra como fonte confiavel por padrao. Se quiser publicar automaticamente nomes resolvidos pela IA, inclua `openai_web` em `LOOKUP_TRUSTED_NAME_SOURCES`, `LOOKUP_PREFERRED_NAME_SOURCES` e `LOOKUP_PREFERRED_DATA_SOURCES`. Sem isso, o item pode ser enriquecido, mas segue com ressalva/aprovacao humana.
+
+Quando a OpenAI responder com `429`, o client agora respeita `Retry-After`, aplica backoff exponencial e segura temporariamente novas consultas web para reduzir falso negativo por rate limit.
 
 ### 2. instalar dependencias
 

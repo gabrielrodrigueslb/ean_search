@@ -89,4 +89,26 @@ describe("OpenAiWebLookupSource", () => {
       error: "OpenAI Web sem evidencia suficiente.",
     });
   });
+
+  test("traduz erro 429 para mensagem operacional mais clara", async () => {
+    const client = {
+      isConfigured: () => true,
+      lookupProduct: jest.fn().mockRejectedValue({
+        message: "Request failed with status code 429",
+        response: {
+          status: 429,
+        },
+      }),
+    };
+    const source = new OpenAiWebLookupSource({ client });
+
+    const lookup = await source.lookupByEan("7891058017507");
+
+    expect(lookup).toEqual({
+      key: "openai_web",
+      result: null,
+      detail: null,
+      error: "OpenAI Web indisponivel temporariamente por limite de consultas (429).",
+    });
+  });
 });

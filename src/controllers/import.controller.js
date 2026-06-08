@@ -1,7 +1,70 @@
 import { ImportService } from "../services/import.service.js";
 import { CsvImportAdapter } from "../adapters/csv-import.adapter.js";
 import { logger } from "../utils/logger.js";
+
+function pickFirstString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function extractNotFoundName(item) {
+  return pickFirstString(
+    item?.nome_recebido,
+    item?.dados_brutos?.nome_exibicao,
+    item?.dados_brutos?.nome_produto,
+    item?.dados_brutos?.nome,
+    item?.dados_brutos?.descricao,
+  );
+}
+
+function summarizeImportItem(item) {
+  return {
+    ean: String(item?.ean || ""),
+    nome: extractNotFoundName(item),
+  };
+}
+
+function buildImportacaoResumo(importacao) {
+  const itens = Array.isArray(importacao?.itens) ? importacao.itens : [];
+
+  const itensNaoEncontrados = itens.filter((item) => (
+    item?.status === "review"
+      && item?.fontes_consultadas?.approval_required === true
+      && item?.fontes_consultadas?.encontrado === false
+  ));
+
+  return {
+    total_produtos_nao_encontrados: itensNaoEncontrados.length,
+    produtos_nao_encontrados: itensNaoEncontrados.map((item) => summarizeImportItem(item)),
+  };
+}
+
 function serializeImportacaoResponse(importacao) {
+  if (!importacao) {
+    return importacao;
+  }
+
+  return {
+    id: importacao.id,
+    fonte: importacao.fonte,
+    status: importacao.status,
+    total_itens: importacao.total_itens,
+    itens_processados: importacao.itens_processados,
+    itens_sucesso: importacao.itens_sucesso,
+    itens_falha: importacao.itens_falha,
+    itens_revisao: importacao.itens_revisao,
+    created_at: importacao.created_at,
+    finished_at: importacao.finished_at,
+    resumo: buildImportacaoResumo(importacao),
+  };
+}
+
+function serializeQueuedImportacaoResponse(importacao) {
   if (!importacao) {
     return importacao;
   }
@@ -73,7 +136,7 @@ class ImportController {
       status: result.status,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   importJson = async (req, res) => {
@@ -101,7 +164,7 @@ class ImportController {
       status: result.status,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   importTrier = async (req, res) => {
@@ -143,7 +206,7 @@ class ImportController {
       nomeProduto,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   importVetor = async (req, res) => {
@@ -183,7 +246,7 @@ class ImportController {
       skip: skip || null,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   importVtex = async (req, res) => {
@@ -221,7 +284,7 @@ class ImportController {
       categoryId: categoryId || null,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   importPostgresEmbalagens = async (req, res) => {
@@ -245,7 +308,7 @@ class ImportController {
       skip: skip || null,
     });
 
-    return res.status(202).json(serializeImportacaoResponse(result));
+    return res.status(202).json(serializeQueuedImportacaoResponse(result));
   };
 
   getImportacao = async (req, res) => {

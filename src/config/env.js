@@ -62,6 +62,9 @@ const env = {
   openAiWebLookupEnabled: process.env.OPENAI_WEB_LOOKUP_ENABLED === "true",
   openAiWebLookupModel: process.env.OPENAI_WEB_LOOKUP_MODEL || "gpt-4o-mini",
   openAiWebLookupTimeoutMs: Number(process.env.OPENAI_WEB_LOOKUP_TIMEOUT_MS || 45000),
+  openAiWebLookupMaxRetries: Math.max(0, Number(process.env.OPENAI_WEB_LOOKUP_MAX_RETRIES || 3)),
+  openAiWebLookupRetryBaseDelayMs: Math.max(250, Number(process.env.OPENAI_WEB_LOOKUP_RETRY_BASE_DELAY_MS || 1500)),
+  openAiWebLookupRetryMaxDelayMs: Math.max(1000, Number(process.env.OPENAI_WEB_LOOKUP_RETRY_MAX_DELAY_MS || 15000)),
   openAiWebLookupAllowedDomains: parseCsvList(
     process.env.OPENAI_WEB_LOOKUP_ALLOWED_DOMAINS,
     [],

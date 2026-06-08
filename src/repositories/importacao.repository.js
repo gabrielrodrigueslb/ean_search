@@ -28,10 +28,15 @@ class ImportacaoRepository {
       return Promise.resolve(null);
     }
 
-    return prisma.importacao.findUnique({
-      where: { id: importacaoId },
-      include: { itens: true, aprovacoes: true, fallbacks: true, fallbacks_vtex: true },
-    }).then((result) => {
+    return Promise.all([
+      prisma.importacao.findUnique({
+        where: { id: importacaoId },
+        include: { itens: true, aprovacoes: true, fallbacks: true },
+      }),
+      prisma.produtoFallbackVtex.findMany({
+        where: { importacao_id: importacaoId },
+      }),
+    ]).then(([result, fallbacksVtex]) => {
       if (!result) {
         return null;
       }
@@ -53,7 +58,7 @@ class ImportacaoRepository {
           api_config: parseJson(fallback.api_config),
           resposta_erro: parseJson(fallback.resposta_erro),
         })),
-        fallbacks_vtex: result.fallbacks_vtex.map((fallback) => ({
+        fallbacks_vtex: fallbacksVtex.map((fallback) => ({
           ...fallback,
           payload_origem: parseJson(fallback.payload_origem),
           payload_enriquecido: parseJson(fallback.payload_enriquecido),

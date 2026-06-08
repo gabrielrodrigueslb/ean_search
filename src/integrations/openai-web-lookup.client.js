@@ -1,8 +1,107 @@
 import axios from "axios";
 import env from "../config/env.js";
 
+let sharedOpenAiWebCooldownUntil = 0;
+
 function trimTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const seconds = Number(normalized);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const retryAt = Date.parse(normalized);
+  if (Number.isNaN(retryAt)) {
+    return null;
+  }
+
+  return Math.max(0, retryAt - Date.now());
+}
+
+function extractStatusCode(error) {
+  return Number(error?.response?.status || 0);
+}
+
+function isRetryableError(error) {
+  const status = extractStatusCode(error);
+  if (status === 408 || status === 409 || status === 425 || status === 429) {
+    return true;
+  }
+
+  if (status >= 500 && status <= 599) {
+    return true;
+  }
+
+  return [
+    "ECONNABORTED",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+  ].includes(String(error?.code || "").toUpperCase());
+}
+
+function buildLookupVariants(rawName) {
+  const value = String(rawName || "").trim();
+  if (!value) {
+    return [];
+  }
+
+  const replacements = [
+    [/\bCPS?\b/gi, "comprimidos"],
+    [/\bCOMP?\b/gi, "comprimidos"],
+    [/\bCAPS?\b/gi, "capsulas"],
+    [/\bENV\b/gi, "envelope"],
+    [/\bEFERV\b/gi, "efervescente"],
+    [/\bREV\b/gi, "revestidos"],
+    [/\bHID\b/gi, "hidratacao"],
+    [/\bPERF\b/gi, "perfuma"],
+    [/\bINT\b/gi, "intensiva"],
+    [/\bSEC RAP\b/gi, "secagem rapida"],
+    [/\bANTI-RESIDUOS?\b/gi, "anti residuos"],
+    [/\bCAB\.?\b/gi, "cabelos"],
+    [/\bTINTOS\b/gi, "tingidos"],
+    [/\bSH\.?\b/gi, "shampoo"],
+    [/\bCOND\.?\b/gi, "condicionador"],
+    [/\bDESOD\.?\b/gi, "desodorante"],
+    [/\bAERO\b/gi, "aerosol"],
+  ];
+
+  const variants = new Set([value]);
+  let expanded = value
+    .replace(/[\/]+/g, " ")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  for (const [pattern, replacement] of replacements) {
+    expanded = expanded.replace(pattern, replacement);
+  }
+
+  expanded = expanded.replace(/\s+/g, " ").trim();
+
+  if (expanded && expanded !== value) {
+    variants.add(expanded);
+  }
+
+  return [...variants].slice(0, 3);
 }
 
 function extractStructuredText(responseData = {}) {
@@ -64,18 +163,26 @@ class OpenAiWebLookupClient {
     baseUrl,
     model,
     timeoutMs,
+    maxRetries,
+    retryBaseDelayMs,
+    retryMaxDelayMs,
     allowedDomains,
     minConfidence,
+    httpClient,
+    sleepFn,
   } = {}) {
     this.apiKey = String(apiKey || env.openAiApiKey || "").trim();
     this.baseUrl = trimTrailingSlash(baseUrl || env.openAiBaseUrl);
     this.model = model || env.openAiWebLookupModel;
     this.timeoutMs = timeoutMs || env.openAiWebLookupTimeoutMs;
+    this.maxRetries = Math.max(0, Number(maxRetries ?? env.openAiWebLookupMaxRetries ?? 3));
+    this.retryBaseDelayMs = Math.max(250, Number(retryBaseDelayMs ?? env.openAiWebLookupRetryBaseDelayMs ?? 1500));
+    this.retryMaxDelayMs = Math.max(this.retryBaseDelayMs, Number(retryMaxDelayMs ?? env.openAiWebLookupRetryMaxDelayMs ?? 15000));
     this.allowedDomains = Array.isArray(allowedDomains)
       ? allowedDomains
       : env.openAiWebLookupAllowedDomains;
     this.minConfidence = Number(minConfidence || env.openAiWebLookupMinConfidence || 0);
-    this.http = axios.create({
+    this.http = httpClient || axios.create({
       baseURL: this.baseUrl,
       timeout: this.timeoutMs,
       headers: {
@@ -83,6 +190,7 @@ class OpenAiWebLookupClient {
         "Content-Type": "application/json",
       },
     });
+    this.sleep = sleepFn || sleep;
   }
 
   isConfigured() {
@@ -108,12 +216,28 @@ class OpenAiWebLookupClient {
     return tool;
   }
 
-  async lookupProduct({ ean, rawName = null } = {}) {
-    if (!this.isConfigured()) {
-      throw new Error("OPENAI_API_KEY nao configurada para fallback OpenAI Web.");
+  async waitForCooldown() {
+    const now = Date.now();
+    if (sharedOpenAiWebCooldownUntil > now) {
+      await this.sleep(sharedOpenAiWebCooldownUntil - now);
+    }
+  }
+
+  computeRetryDelayMs(error, attempt) {
+    const retryAfterMs = parseRetryAfterMs(error?.response?.headers?.["retry-after"]);
+    if (retryAfterMs !== null) {
+      return Math.min(this.retryMaxDelayMs, Math.max(this.retryBaseDelayMs, retryAfterMs));
     }
 
-    const response = await this.http.post("/responses", {
+    const exponentialDelay = this.retryBaseDelayMs * (2 ** Math.max(0, attempt - 1));
+    const jitter = Math.floor(Math.random() * 250);
+    return Math.min(this.retryMaxDelayMs, exponentialDelay + jitter);
+  }
+
+  buildRequestPayload({ ean, rawName = null } = {}) {
+    const queryVariants = buildLookupVariants(rawName);
+
+    return {
       model: this.model,
       tools: [this.buildWebSearchTool()],
       tool_choice: "auto",
@@ -130,6 +254,7 @@ class OpenAiWebLookupClient {
                 "Retorne null quando nao houver evidencia suficiente de que o resultado corresponde ao EAN.",
                 "Nao invente nome, laboratorio, registro, principio ativo ou categoria.",
                 "Prefira paginas que mencionem explicitamente codigo de barras, EAN, GTIN ou o mesmo produto.",
+                "Use o nome bruto e as variacoes de busca apenas como apoio para localizar o mesmo item do EAN.",
               ].join(" "),
             },
           ],
@@ -142,8 +267,10 @@ class OpenAiWebLookupClient {
               text: JSON.stringify({
                 ean: String(ean || ""),
                 nome_bruto: rawName || null,
+                query_variants: queryVariants,
                 instrucoes: [
-                  "Pesquise pelo EAN e, se necessario, pelo EAN junto com o nome bruto.",
+                  "Pesquise primeiro pelo EAN exato.",
+                  "Se necessario, pesquise pelo EAN junto com o nome bruto e com query_variants.",
                   "Se encontrar o produto, extraia apenas campos vistos nas fontes.",
                   "confidence deve refletir a forca da evidencia entre 0 e 1.",
                 ],
@@ -213,7 +340,41 @@ class OpenAiWebLookupClient {
           },
         },
       },
-    });
+    };
+  }
+
+  async lookupProduct({ ean, rawName = null } = {}) {
+    if (!this.isConfigured()) {
+      throw new Error("OPENAI_API_KEY nao configurada para fallback OpenAI Web.");
+    }
+
+    const payload = this.buildRequestPayload({ ean, rawName });
+    let response = null;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= this.maxRetries + 1; attempt += 1) {
+      await this.waitForCooldown();
+
+      try {
+        response = await this.http.post("/responses", payload);
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isRetryableError(error) || attempt > this.maxRetries) {
+          throw error;
+        }
+
+        const delayMs = this.computeRetryDelayMs(error, attempt);
+        if (extractStatusCode(error) === 429) {
+          sharedOpenAiWebCooldownUntil = Math.max(sharedOpenAiWebCooldownUntil, Date.now() + delayMs);
+        }
+        await this.sleep(delayMs);
+      }
+    }
+
+    if (!response && lastError) {
+      throw lastError;
+    }
 
     const text = extractStructuredText(response.data);
     if (!text) {

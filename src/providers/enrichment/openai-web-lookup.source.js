@@ -98,11 +98,16 @@ class OpenAiWebLookupSource extends ProductLookupSourceContract {
         error: null,
       };
     } catch (error) {
+      const statusCode = Number(error?.response?.status || 0);
+      const message = statusCode === 429
+        ? "OpenAI Web indisponivel temporariamente por limite de consultas (429)."
+        : error.message;
+
       return {
         key: this.getSourceKey(),
         result: null,
         detail: null,
-        error: error.message,
+        error: message,
       };
     }
   }
