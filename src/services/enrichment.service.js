@@ -234,6 +234,8 @@ class EnrichmentService {
       result: null,
       detail: null,
       error: null,
+      skipped: false,
+      skip_reason: null,
     };
   }
 
@@ -254,6 +256,8 @@ class EnrichmentService {
           result: lookup?.result || null,
           detail: lookup?.detail || null,
           error: lookup?.error || null,
+          skipped: lookup?.skipped === true,
+          skip_reason: lookup?.skip_reason || null,
         },
       ]),
     );
@@ -350,6 +354,8 @@ class EnrichmentService {
       acc[`${metricKey}_busca`] = Boolean(lookup?.result);
       acc[`${metricKey}_busca_error`] = lookup?.error || null;
       acc[`${metricKey}_detalhe`] = Boolean(lookup?.detail);
+      acc[`${metricKey}_skipped`] = lookup?.skipped === true;
+      acc[`${metricKey}_skip_reason`] = lookup?.skip_reason || null;
 
       return acc;
     }, {});
@@ -364,6 +370,8 @@ class EnrichmentService {
 
       if (this.lookupHasMatch(lookup)) {
         reasons.push(`${label} encontrou resultado.`);
+      } else if (lookup?.skipped) {
+        reasons.push(`${label} nao foi consultada porque uma fonte anterior resolveu o EAN.`);
       } else if (lookup?.error) {
         reasons.push(`${label} falhou: ${lookup.error}`);
       } else {

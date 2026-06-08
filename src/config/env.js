@@ -78,15 +78,15 @@ const env = {
   lookupSourceMode: process.env.LOOKUP_SOURCE_MODE || "api_first",
   lookupTrustedNameSources: parseCsvList(
     process.env.LOOKUP_TRUSTED_NAME_SOURCES,
-    ["convertize", "farmaindex", "drogasil"],
+    ["convertize", "drogasil"],
   ),
   lookupPreferredNameSources: parseCsvList(
     process.env.LOOKUP_PREFERRED_NAME_SOURCES,
-    ["convertize", "farmaindex", "drogasil"],
+    ["convertize", "drogasil"],
   ),
   lookupPreferredDataSources: parseCsvList(
     process.env.LOOKUP_PREFERRED_DATA_SOURCES,
-    ["farmaindex", "convertize", "drogasil"],
+    ["convertize", "drogasil"],
   ),
   lookupPassThroughSources: parseCsvList(
     process.env.LOOKUP_PASS_THROUGH_SOURCES,

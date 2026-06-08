@@ -20,10 +20,38 @@ class ProductLookupSourceRegistry {
     return Array.from(this.sources.values());
   }
 
+  buildSkippedLookup(sourceKey, resolvedBySourceKey) {
+    return {
+      key: sourceKey,
+      result: null,
+      detail: null,
+      error: null,
+      skipped: true,
+      skip_reason: resolvedBySourceKey
+        ? `resolved_by_${resolvedBySourceKey}`
+        : "resolved_by_previous_source",
+    };
+  }
+
   async lookupByEan(ean) {
-    const entries = await Promise.all(
-      this.getAll().map(async (source) => [source.getSourceKey(), await source.lookupByEan(ean)]),
-    );
+    const entries = [];
+    let resolvedBySourceKey = null;
+
+    for (const source of this.getAll()) {
+      const sourceKey = source.getSourceKey();
+
+      if (resolvedBySourceKey) {
+        entries.push([sourceKey, this.buildSkippedLookup(sourceKey, resolvedBySourceKey)]);
+        continue;
+      }
+
+      const lookup = await source.lookupByEan(ean);
+      entries.push([sourceKey, lookup]);
+
+      if (lookup?.result || lookup?.detail) {
+        resolvedBySourceKey = sourceKey;
+      }
+    }
 
     return Object.fromEntries(entries);
   }

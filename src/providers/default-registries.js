@@ -3,7 +3,6 @@ import { ConvertizeLookupSource } from "./enrichment/convertize-lookup.source.js
 import env from "../config/env.js";
 import { ConfigurableHtmlLookupSource } from "./enrichment/configurable-html-lookup.source.js";
 import { DrogasilLookupSource } from "./enrichment/drogasil-lookup.source.js";
-import { FarmaIndexLookupSource } from "./enrichment/farmaindex-lookup.source.js";
 import { ImportProviderRegistry } from "./import/import-provider.registry.js";
 import { PostgresEmbalagemImportProvider } from "./import/postgres-embalagem-import.provider.js";
 import { TrierImportProvider } from "./import/trier-import.provider.js";
@@ -44,10 +43,7 @@ function resolveLookupSources({ apiSources, scraperSources, mode }) {
 }
 
 function createDefaultProductLookupSourceRegistry() {
-  const apiSources = [
-    new ConvertizeLookupSource(),
-    new FarmaIndexLookupSource(),
-  ];
+  const apiSources = [new ConvertizeLookupSource()];
   const scraperSources = createConfiguredHtmlLookupSources();
 
   return new ProductLookupSourceRegistry(resolveLookupSources({

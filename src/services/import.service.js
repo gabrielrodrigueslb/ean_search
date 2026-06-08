@@ -8,6 +8,7 @@ import { logger } from "../utils/logger.js";
 import env from "../config/env.js";
 import { createDefaultImportProviderRegistry } from "../providers/default-registries.js";
 import { MercadologicalClassificationService } from "./mercadological-classification.service.js";
+import { formatSourceList } from "../utils/productSourcePolicy.js";
 class ImportService {
   constructor({
     importacaoRepository,
@@ -868,7 +869,7 @@ class ImportService {
           item_importacao_id: importItem.id,
           ean: validation.ean,
           nome_sugerido: item.nome_recebido || null,
-          motivo: enriched.approvalReason || "Item sem nome validado por PT.ProductSearch ou FarmaIndex.",
+          motivo: enriched.approvalReason || `Item sem nome validado por ${formatSourceList(env.lookupTrustedNameSources)}.`,
           fonte_origem: item.fonte || "importacao",
           dados_brutos: enriched.item.dados_brutos || enriched.item,
         });
@@ -992,6 +993,12 @@ class ImportService {
           await this.incrementImportCounters(importacaoId, "enriched");
         }
       }));
+
+      return {
+        status: "enriched",
+        publishedCount: preparedEntries.length,
+        fallbackCount: 0,
+      };
     } catch (publishError) {
       const apiError = this.buildApiErrorDetails(publishError);
 
@@ -1008,13 +1015,14 @@ class ImportService {
         });
 
         await this.importacaoRepository.updateItem(entry.importItem.id, {
-          status: "enriched",
+          status: "failed",
           nome_recebido: entry.enriched.item.nome_recebido || entry.importItem.nome_recebido,
           mensagem_erro: `Fallback Postgres acionado apos falha na API: ${publishError.message}`,
           fontes_consultadas: {
             source: entry.item.fonte || "importacao",
             action: "stored_fallback",
             destination: "postgres_fallback_api",
+            publish_status: "pending_replay",
             api_error: apiError,
             ...entry.enriched.fontes_consultadas,
           },
@@ -1029,9 +1037,15 @@ class ImportService {
         });
 
         if (shouldIncrementCounters) {
-          await this.incrementImportCounters(importacaoId, "enriched");
+          await this.incrementImportCounters(importacaoId, "failed");
         }
       }));
+
+      return {
+        status: "failed",
+        publishedCount: 0,
+        fallbackCount: preparedEntries.length,
+      };
     }
   }
 
@@ -1117,13 +1131,13 @@ class ImportService {
       return preparation.status;
     }
 
-    await this.publishPreparedEntriesBatch(
+    const publishResult = await this.publishPreparedEntriesBatch(
       importacaoId,
       [preparation],
       productApi,
       { incrementCounters: false },
     );
-    return "enriched";
+    return publishResult?.status || "failed";
   }
 
   async incrementImportCounters(importacaoId, status) {

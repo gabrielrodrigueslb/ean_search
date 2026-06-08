@@ -15,7 +15,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_exibicao_trier: "LENCOS UMED.BABY WIPES C500 AZ",
         categoria: "Higiene",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, Drogasil ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, Drogasil ou VTEX.");
   });
 
   test("monta documento unico para nome validado pela Convertize", () => {
@@ -76,7 +76,7 @@ describe("ProductService.buildSnapshot", () => {
       ean: "7896023705397",
       nome_recebido: "Agua Inglesa Frasco Com 500ml",
       dados_brutos: {
-        origem_nome: "farmaindex",
+        origem_nome: "drogasil",
         nome: "Agua Inglesa Frasco Com 500ml",
         nome_produto: "Agua Inglesa Frasco Com 500ml",
         nome_exibicao: "Agua Inglesa Frasco Com 500ml",
@@ -106,7 +106,7 @@ describe("ProductService.buildSnapshot", () => {
         nome_produto: "ACETICIL 100MG ENV 10CP",
         nome_exibicao: "ACETICIL 100MG ENV 10CP",
       },
-    })).toThrow("Nome do produto nao foi validado por Convertize, FarmaIndex, Drogasil ou VTEX.");
+    })).toThrow("Nome do produto nao foi validado por Convertize, Drogasil ou VTEX.");
   });
 
   test("aceita nome vindo da vtex quando for pass-through operacional", () => {

@@ -42,7 +42,7 @@ function extractAttemptedSources(fontesConsultadas = {}) {
   const groupedSources = new Map();
 
   for (const [metricKey, value] of Object.entries(fontesConsultadas || {})) {
-    const match = metricKey.match(/^(.+?)_(busca|detalhe|busca_error)$/);
+    const match = metricKey.match(/^(.+?)_(busca|detalhe|busca_error|skipped|skip_reason)$/);
     if (!match) {
       continue;
     }
@@ -54,6 +54,8 @@ function extractAttemptedSources(fontesConsultadas = {}) {
       busca: false,
       detalhe: false,
       erro: null,
+      skipped: false,
+      skip_reason: null,
     };
 
     if (metricType === "busca") {
@@ -66,6 +68,14 @@ function extractAttemptedSources(fontesConsultadas = {}) {
 
     if (metricType === "busca_error") {
       source.erro = value || null;
+    }
+
+    if (metricType === "skipped") {
+      source.skipped = Boolean(value);
+    }
+
+    if (metricType === "skip_reason") {
+      source.skip_reason = value || null;
     }
 
     groupedSources.set(sourceKey, source);

@@ -1,6 +1,6 @@
-const DEFAULT_TRUSTED_NAME_SOURCES = ["convertize", "farmaindex", "drogasil"];
-const DEFAULT_PREFERRED_NAME_SOURCES = ["convertize", "farmaindex", "drogasil"];
-const DEFAULT_PREFERRED_DATA_SOURCES = ["farmaindex", "convertize", "drogasil"];
+const DEFAULT_TRUSTED_NAME_SOURCES = ["convertize", "drogasil"];
+const DEFAULT_PREFERRED_NAME_SOURCES = ["convertize", "drogasil"];
+const DEFAULT_PREFERRED_DATA_SOURCES = ["convertize", "drogasil"];
 const DEFAULT_PASS_THROUGH_SOURCES = ["vtex"];
 
 const SOURCE_LABELS = {

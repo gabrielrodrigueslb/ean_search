@@ -66,7 +66,7 @@ describe("ImportService processSingleItem", () => {
           },
         },
         fontes_consultadas: {
-          farmaindex_busca: true,
+          convertize_busca: true,
         },
       }),
       createSession: jest.fn(),
@@ -99,7 +99,7 @@ describe("ImportService processSingleItem", () => {
       },
     });
 
-    expect(status).toBe("enriched");
+    expect(status).toBe("failed");
     expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
     expect(repository.createProdutoFallbackApi).toHaveBeenCalledWith(expect.objectContaining({
       importacao_id: 12,
@@ -109,12 +109,68 @@ describe("ImportService processSingleItem", () => {
       status: "pending_replay",
     }));
     expect(repository.updateItem).toHaveBeenLastCalledWith(77, expect.objectContaining({
-      status: "enriched",
+      status: "failed",
       fontes_consultadas: expect.objectContaining({
         action: "stored_fallback",
         destination: "postgres_fallback_api",
+        publish_status: "pending_replay",
       }),
     }));
+  });
+
+  test("contabiliza fallback da API como falha e nao como sucesso", async () => {
+    const repository = {
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoFallbackApi: jest.fn().mockResolvedValue({ id: 901 }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => ({
+      createSession: jest.fn(),
+      enrichImportedItem: jest.fn(),
+    }));
+    BancoUnicoService.mockImplementation(() => ({
+      publishProduct: jest.fn().mockRejectedValue(new Error("Falha na API externa")),
+    }));
+
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
+    service.incrementImportCounters = jest.fn().mockResolvedValue({});
+
+    const result = await service.publishPreparedEntriesBatch(12, [{
+      importItem: {
+        id: 78,
+        nome_recebido: "Dorflex 36 Comprimidos",
+      },
+      item: {
+        fonte: "json",
+      },
+      validation: {
+        ean: "7891058017507",
+      },
+      enriched: {
+        item: {
+          nome_recebido: "Dorflex 36 Comprimidos",
+        },
+        fontes_consultadas: {
+          convertize_busca: true,
+        },
+      },
+      productPayload: {
+        ean: "7891058017507",
+      },
+    }]);
+
+    expect(result).toEqual({
+      status: "failed",
+      publishedCount: 0,
+      fallbackCount: 1,
+    });
+    expect(service.incrementImportCounters).toHaveBeenCalledWith(12, "failed");
+    expect(service.incrementImportCounters).not.toHaveBeenCalledWith(12, "enriched");
   });
 
   test("processa itens em paralelo com concorrencia configuravel", async () => {
@@ -189,8 +245,8 @@ describe("ImportService processSingleItem", () => {
           ean: "7893736007527",
           nome_recebido: "ACETICIL 100MG ENV 10CP",
           dados_brutos: {
-            origem_nome: "farmaindex",
-            origem_dados: "farmaindex",
+            origem_nome: "convertize",
+            origem_dados: "convertize",
             nome: "Aceticil",
             nome_produto: "Aceticil",
             nome_exibicao: "Aceticil 100mg 10 Comprimidos",
@@ -198,9 +254,7 @@ describe("ImportService processSingleItem", () => {
           },
         },
         fontes_consultadas: {
-          convertize_busca: false,
-          farmaindex_busca: true,
-          farmaindex_detalhe: true,
+          convertize_busca: true,
           encontrado: true,
         },
       }),
@@ -241,7 +295,7 @@ describe("ImportService processSingleItem", () => {
       status: "enriched",
       fontes_consultadas: expect.objectContaining({
         action: "published",
-        farmaindex_busca: true,
+        convertize_busca: true,
       }),
     }));
   });
@@ -268,8 +322,8 @@ describe("ImportService processSingleItem", () => {
           ean: "7891317001056",
           nome_recebido: "Acetilcisteina Eurofarma 100mg 16 envelopes",
           dados_brutos: {
-            origem_nome: "farmaindex",
-            origem_dados: "farmaindex",
+            origem_nome: "drogasil",
+            origem_dados: "drogasil",
             nome: "Acetilcisteina Eurofarma",
             nome_produto: "Acetilcisteina Eurofarma",
             nome_exibicao: "Acetilcisteina Eurofarma 100mg 16 envelopes",
@@ -279,8 +333,8 @@ describe("ImportService processSingleItem", () => {
           },
         },
         fontes_consultadas: {
-          farmaindex_busca: true,
-          farmaindex_detalhe: true,
+          drogasil_busca: true,
+          drogasil_detalhe: true,
           encontrado: true,
         },
       }),
@@ -326,8 +380,8 @@ describe("ImportService processSingleItem", () => {
         skuId: 20,
       }),
       payload_enriquecido: expect.objectContaining({
-        origem_nome: "farmaindex",
-        origem_dados: "farmaindex",
+        origem_nome: "drogasil",
+        origem_dados: "drogasil",
       }),
       produto_payload: expect.objectContaining({
         ean: "7891317001056",
@@ -335,7 +389,7 @@ describe("ImportService processSingleItem", () => {
       }),
       fontes_consultadas: expect.objectContaining({
         source: "vtex",
-        farmaindex_busca: true,
+        drogasil_busca: true,
       }),
     }));
   });

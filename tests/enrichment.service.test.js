@@ -15,8 +15,8 @@ describe("EnrichmentService session cache", () => {
           detail: null,
           error: null,
         },
-        farmaindex: {
-          key: "farmaindex",
+        drogasil: {
+          key: "drogasil",
           result: null,
           detail: null,
           error: null,
@@ -61,8 +61,8 @@ describe("EnrichmentService session cache", () => {
         detail: null,
         error: null,
       },
-      farmaindex: {
-        key: "farmaindex",
+      drogasil: {
+        key: "drogasil",
         result: null,
         detail: null,
         error: null,
