@@ -105,6 +105,10 @@ const env = {
     ["vtex"],
   ),
   drogasilLookupEnabled: process.env.DROGASIL_LOOKUP_ENABLED !== "false",
+  consultaRemediosLookupEnabled: process.env.CONSULTA_REMEDIOS_LOOKUP_ENABLED !== "false",
+  publicSearchLookupEnabled: process.env.PUBLIC_SEARCH_LOOKUP_ENABLED !== "false",
+  publicSearchLookupMaxCandidates: Math.max(1, Number(process.env.PUBLIC_SEARCH_LOOKUP_MAX_CANDIDATES || 5)),
+  publicSearchLookupMaxFetches: Math.max(1, Number(process.env.PUBLIC_SEARCH_LOOKUP_MAX_FETCHES || 3)),
   htmlLookupSources: parseJsonArray(process.env.HTML_LOOKUP_SOURCES_JSON, []),
 };
 

@@ -2,8 +2,10 @@ import { ProductLookupSourceRegistry } from "./enrichment/product-lookup-source.
 import { ConvertizeLookupSource } from "./enrichment/convertize-lookup.source.js";
 import env from "../config/env.js";
 import { ConfigurableHtmlLookupSource } from "./enrichment/configurable-html-lookup.source.js";
+import { ConsultaRemediosLookupSource } from "./enrichment/consulta-remedios-lookup.source.js";
 import { DrogasilLookupSource } from "./enrichment/drogasil-lookup.source.js";
 import { OpenAiWebLookupSource } from "./enrichment/openai-web-lookup.source.js";
+import { PublicSearchLookupSource } from "./enrichment/public-search-lookup.source.js";
 import { ImportProviderRegistry } from "./import/import-provider.registry.js";
 import { PostgresEmbalagemImportProvider } from "./import/postgres-embalagem-import.provider.js";
 import { TrierImportProvider } from "./import/trier-import.provider.js";
@@ -15,6 +17,17 @@ function createConfiguredHtmlLookupSources() {
 
   if (env.drogasilLookupEnabled) {
     sources.push(new DrogasilLookupSource());
+  }
+
+  if (env.consultaRemediosLookupEnabled) {
+    sources.push(new ConsultaRemediosLookupSource());
+  }
+
+  if (env.publicSearchLookupEnabled) {
+    sources.push(new PublicSearchLookupSource({
+      maxCandidates: env.publicSearchLookupMaxCandidates,
+      maxFetches: env.publicSearchLookupMaxFetches,
+    }));
   }
 
   if (!Array.isArray(env.htmlLookupSources) || !env.htmlLookupSources.length) {

@@ -174,6 +174,10 @@ Os 4 sites podem ser cadastrados nessa mesma lista, um objeto por fonte.
 ### Flags de fontes de enriquecimento
 
 - `CONVERTIZE_LOOKUP_ENABLED=false` remove a Convertize da cadeia de enriquecimento. Ela deixa de aparecer em `fontes_consultadas` e nao faz requisicao.
+- `CONSULTA_REMEDIOS_LOOKUP_ENABLED=true` ativa a busca direta por EAN no Consulta Remedios.
+- `PUBLIC_SEARCH_LOOKUP_ENABLED=true` ativa a busca publica por candidatos via SERP HTML antes do fallback com IA.
+- `PUBLIC_SEARCH_LOOKUP_MAX_CANDIDATES` limita quantos candidatos publicos entram na triagem.
+- `PUBLIC_SEARCH_LOOKUP_MAX_FETCHES` limita quantas paginas candidatas sao abertas para confirmar evidencia.
 - `OPENAI_WEB_LOOKUP_ENABLED=true` adiciona a OpenAI com busca web como ultimo fallback, apenas depois das fontes API/scraping configuradas falharem.
 - `OPENAI_WEB_LOOKUP_MODEL` define o modelo usado no fallback web.
 - `OPENAI_WEB_LOOKUP_MIN_CONFIDENCE` define a confianca minima para aceitar o resultado estruturado da IA.
@@ -185,6 +189,14 @@ Os 4 sites podem ser cadastrados nessa mesma lista, um objeto por fonte.
 Por seguranca operacional, `openai_web` nao entra como fonte confiavel por padrao. Se quiser publicar automaticamente nomes resolvidos pela IA, inclua `openai_web` em `LOOKUP_TRUSTED_NAME_SOURCES`, `LOOKUP_PREFERRED_NAME_SOURCES` e `LOOKUP_PREFERRED_DATA_SOURCES`. Sem isso, o item pode ser enriquecido, mas segue com ressalva/aprovacao humana.
 
 Quando a OpenAI responder com `429`, o client agora respeita `Retry-After`, aplica backoff exponencial e segura temporariamente novas consultas web para reduzir falso negativo por rate limit.
+
+Fluxo recomendado atual de enriquecimento:
+
+1. `Convertize` (se habilitada)
+2. `Drogasil`
+3. `Consulta Remedios`
+4. `Busca Publica`
+5. `OpenAI Web`
 
 ### 2. instalar dependencias
 

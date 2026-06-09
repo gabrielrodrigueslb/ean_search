@@ -6,8 +6,10 @@ const DEFAULT_PASS_THROUGH_SOURCES = ["vtex"];
 const SOURCE_LABELS = {
   convertize: "Convertize",
   drogasil: "Drogasil",
+  consulta_remedios: "Consulta Remedios",
   farmaindex: "FarmaIndex",
   openai_web: "OpenAI Web",
+  public_search: "Busca Publica",
   vtex: "VTEX",
 };
 
