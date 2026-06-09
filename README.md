@@ -143,8 +143,13 @@ REQUEST_TIMEOUT_MS=10000
 IMPORT_QUEUE_CONCURRENCY=1
 IMPORT_ITEM_CONCURRENCY=8
 PT_PRODUCT_SEARCH_MAX_REQUESTS_PER_MINUTE=45
+CONVERTIZE_LOOKUP_ENABLED=true
 BROWSER_FALLBACK_TIMEOUT_MS=45000
 BROWSER_FALLBACK_HEADLESS=true
+OPENAI_WEB_LOOKUP_ENABLED=false
+OPENAI_WEB_LOOKUP_MODEL=gpt-4o-mini
+OPENAI_WEB_LOOKUP_TIMEOUT_MS=45000
+OPENAI_WEB_LOOKUP_MIN_CONFIDENCE=0.7
 LOOKUP_SOURCE_MODE=api_first
 LOOKUP_TRUSTED_NAME_SOURCES=convertize,farmaindex
 LOOKUP_PREFERRED_NAME_SOURCES=convertize,farmaindex
@@ -165,6 +170,16 @@ HTML_LOOKUP_SOURCES_JSON=[{"key":"site_a","baseUrl":"https://site-a.com","search
 ```
 
 Os 4 sites podem ser cadastrados nessa mesma lista, um objeto por fonte.
+
+### Flags de fontes de enriquecimento
+
+- `CONVERTIZE_LOOKUP_ENABLED=false` remove a Convertize da cadeia de enriquecimento. Ela deixa de aparecer em `fontes_consultadas` e nao faz requisicao.
+- `OPENAI_WEB_LOOKUP_ENABLED=true` adiciona a OpenAI com busca web como ultimo fallback, apenas depois das fontes API/scraping configuradas falharem.
+- `OPENAI_WEB_LOOKUP_MODEL` define o modelo usado no fallback web.
+- `OPENAI_WEB_LOOKUP_MIN_CONFIDENCE` define a confianca minima para aceitar o resultado estruturado da IA.
+- `OPENAI_WEB_LOOKUP_ALLOWED_DOMAINS=dominio1.com,dominio2.com` opcionalmente restringe os dominios consultados pela busca web.
+
+Por seguranca operacional, `openai_web` nao entra como fonte confiavel por padrao. Se quiser publicar automaticamente nomes resolvidos pela IA, inclua `openai_web` em `LOOKUP_TRUSTED_NAME_SOURCES`, `LOOKUP_PREFERRED_NAME_SOURCES` e `LOOKUP_PREFERRED_DATA_SOURCES`. Sem isso, o item pode ser enriquecido, mas segue com ressalva/aprovacao humana.
 
 ### 2. instalar dependencias
 

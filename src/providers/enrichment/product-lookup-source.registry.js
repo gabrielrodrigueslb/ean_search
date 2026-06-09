@@ -33,7 +33,7 @@ class ProductLookupSourceRegistry {
     };
   }
 
-  async lookupByEan(ean) {
+  async lookupByEan(ean, context = {}) {
     const entries = [];
     let resolvedBySourceKey = null;
 
@@ -45,7 +45,7 @@ class ProductLookupSourceRegistry {
         continue;
       }
 
-      const lookup = await source.lookupByEan(ean);
+      const lookup = await source.lookupByEan(ean, context);
       entries.push([sourceKey, lookup]);
 
       if (lookup?.result || lookup?.detail) {

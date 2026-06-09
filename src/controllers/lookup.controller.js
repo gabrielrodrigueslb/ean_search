@@ -3,6 +3,7 @@ import { EnrichmentService } from "../services/enrichment.service.js";
 import { lookupQueueService } from "../services/lookup-queue.service.js";
 import { MercadologicalClassificationService } from "../services/mercadological-classification.service.js";
 import { ProductService } from "../services/product.service.js";
+import { hasLookupSourceErrors } from "../utils/enrichmentSourceStatus.js";
 import { formatSourceLabel } from "../utils/productSourcePolicy.js";
 import { validateEAN } from "../utils/validateEAN.js";
 
@@ -128,7 +129,13 @@ class LookupController {
       };
     }
 
-    const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item);
+    const disableAi = hasLookupSourceErrors(enriched.fontes_consultadas);
+    const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item, {
+      disableAi,
+      disableAiReason: disableAi
+        ? "falha em uma ou mais fontes de enriquecimento"
+        : null,
+    });
     const product = enriched.requiresApproval
       ? null
       : this.productService.buildSnapshot(classifiedItem);

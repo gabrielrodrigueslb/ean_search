@@ -7,6 +7,7 @@ const SOURCE_LABELS = {
   convertize: "Convertize",
   drogasil: "Drogasil",
   farmaindex: "FarmaIndex",
+  openai_web: "OpenAI Web",
   vtex: "VTEX",
 };
 

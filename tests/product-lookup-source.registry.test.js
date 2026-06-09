@@ -1,13 +1,13 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import { ProductLookupSourceRegistry } from "../src/providers/enrichment/product-lookup-source.registry.js";
 
 function createSource(sourceKey, lookupResult) {
+  const lookupByEan = jest.fn(async () => lookupResult);
+
   return {
+    lookupByEan,
     getSourceKey() {
       return sourceKey;
-    },
-    async lookupByEan() {
-      return lookupResult;
     },
   };
 }
@@ -51,5 +51,22 @@ describe("ProductLookupSourceRegistry", () => {
       skipped: true,
       skip_reason: "resolved_by_convertize",
     });
+  });
+
+  test("repassa contexto para a fonte consultada", async () => {
+    const source = createSource("openai_web", {
+      key: "openai_web",
+      result: null,
+      detail: null,
+      error: null,
+    });
+    const registry = new ProductLookupSourceRegistry([source]);
+    const context = {
+      rawName: "Produto bruto",
+    };
+
+    await registry.lookupByEan("7891058017507", context);
+
+    expect(source.lookupByEan).toHaveBeenCalledWith("7891058017507", context);
   });
 });

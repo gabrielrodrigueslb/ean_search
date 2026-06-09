@@ -71,7 +71,15 @@ class EnrichmentService {
 
   async enrichImportedItem(item, session = null) {
     const ean = String(item.ean || "");
-    const { resolution, cacheHit } = await this.getResolutionForEan(ean, session);
+    const { resolution, cacheHit } = await this.getResolutionForEan(ean, session, {
+      rawName: pickFirstString(
+        item?.nome_recebido,
+        item?.dados_brutos?.nome_exibicao,
+        item?.dados_brutos?.nome_produto,
+        item?.dados_brutos?.nome,
+      ),
+      item,
+    });
     const {
       lookups,
       nameLookup,
@@ -171,11 +179,11 @@ class EnrichmentService {
     };
   }
 
-  async getResolutionForEan(ean, session = null) {
+  async getResolutionForEan(ean, session = null, context = {}) {
     const cache = session?.lookupCache;
     if (!cache) {
       return {
-        resolution: await this.resolveExternalSources(ean),
+        resolution: await this.resolveExternalSources(ean, context),
         cacheHit: false,
       };
     }
@@ -187,7 +195,7 @@ class EnrichmentService {
       };
     }
 
-    const pendingResolution = this.resolveExternalSources(ean);
+    const pendingResolution = this.resolveExternalSources(ean, context);
     cache.set(ean, pendingResolution);
 
     try {
@@ -202,8 +210,8 @@ class EnrichmentService {
     }
   }
 
-  async resolveExternalSources(ean) {
-    const lookups = this.normalizeLookups(await this.lookupSourceRegistry.lookupByEan(ean));
+  async resolveExternalSources(ean, context = {}) {
+    const lookups = this.normalizeLookups(await this.lookupSourceRegistry.lookupByEan(ean, context));
     const nameLookup = this.pickPreferredLookup(
       lookups,
       this.preferredNameSources,

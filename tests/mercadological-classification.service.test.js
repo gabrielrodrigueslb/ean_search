@@ -71,4 +71,53 @@ describe("MercadologicalClassificationService", () => {
       { nome: "Dipirona Monoidratada", farmaco: "Dipirona Monoidratada" },
     ]);
   });
+
+  test("nao chama OpenAI quando a classificacao vier com IA desabilitada", async () => {
+    const treeService = {
+      isConfigured: () => true,
+      findExactPath: () => null,
+      findCandidates: () => [
+        {
+          id: "taxonomy_1",
+          departamento: "Medicamentos",
+          categoria: "Dor e Febre",
+          subcategoria: "AnalgÃ©sicos",
+          segmento: "AnalgÃ©sicos",
+          subsegmento: "Dipirona",
+          path: "Medicamentos > Dor e Febre > AnalgÃ©sicos > AnalgÃ©sicos > Dipirona",
+        },
+      ],
+    };
+
+    const openAiClient = {
+      isConfigured: () => true,
+      classifyProduct: async () => {
+        throw new Error("OpenAI nao deveria ser chamada");
+      },
+    };
+
+    const service = new MercadologicalClassificationService({
+      treeService,
+      openAiClient,
+    });
+
+    const result = await service.classifyItem({
+      ean: "7899547531213",
+      dados_brutos: {
+        nome_exibicao: "Dipirona Monoidratada 500mg 30 comprimidos",
+        descricao_original: "Dipirona Monoidratada 500mg 30 comprimidos",
+        descricao_normalizada: "dipirona monoidratada 500mg 30 comprimidos",
+        marca: "Prati",
+        laboratorio: "Prati",
+      },
+    }, {
+      disableAi: true,
+      disableAiReason: "falha em uma ou mais fontes de enriquecimento",
+    });
+
+    expect(result.dados_brutos.classificacao_mercadologica).toEqual(expect.objectContaining({
+      source: "heuristic_ai_disabled",
+    }));
+    expect(result.dados_brutos.classificacao_mercadologica.rationale).toContain("IA desabilitada");
+  });
 });

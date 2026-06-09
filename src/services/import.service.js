@@ -8,6 +8,7 @@ import { logger } from "../utils/logger.js";
 import env from "../config/env.js";
 import { createDefaultImportProviderRegistry } from "../providers/default-registries.js";
 import { MercadologicalClassificationService } from "./mercadological-classification.service.js";
+import { hasLookupSourceErrors } from "../utils/enrichmentSourceStatus.js";
 import { formatSourceList } from "../utils/productSourcePolicy.js";
 class ImportService {
   constructor({
@@ -888,7 +889,13 @@ class ImportService {
         return { status: "review" };
       }
 
-      const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item);
+      const disableAi = hasLookupSourceErrors(enriched.fontes_consultadas);
+      const classifiedItem = await this.mercadologicalClassificationService.classifyItem(enriched.item, {
+        disableAi,
+        disableAiReason: disableAi
+          ? "falha em uma ou mais fontes de enriquecimento"
+          : null,
+      });
       const productPayload = this.productService.buildSnapshot(classifiedItem);
 
       logger.info("Classificacao mercadologica concluida", {

@@ -300,6 +300,93 @@ describe("ImportService processSingleItem", () => {
     }));
   });
 
+  test("nao cai na IA quando uma fonte de enriquecimento falha", async () => {
+    const repository = {
+      createItem: jest.fn().mockResolvedValue({
+        id: 188,
+        importacao_id: 15,
+        ean: "7893736007527",
+        nome_recebido: "ACETICIL 100MG ENV 10CP",
+      }),
+      updateItem: jest.fn().mockResolvedValue({}),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+    };
+
+    const enrichmentService = {
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7893736007527",
+          nome_recebido: "ACETICIL 100MG ENV 10CP",
+          dados_brutos: {
+            origem_nome: "cliente_postgres",
+            origem_dados: "cliente_postgres",
+            nome: "ACETICIL 100MG ENV 10CP",
+            nome_produto: "ACETICIL 100MG ENV 10CP",
+            nome_exibicao: "ACETICIL 100MG ENV 10CP",
+          },
+        },
+        fontes_consultadas: {
+          convertize_busca: false,
+          convertize_busca_error: "timeout",
+          drogasil_busca: false,
+          drogasil_busca_error: null,
+          pass_through_source: "cliente_postgres",
+          encontrado: true,
+        },
+      }),
+      createSession: jest.fn(),
+    };
+
+    const bancoUnicoService = {
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    const mercadologicalClassificationService = {
+      classifyItem: jest.fn(async (item) => ({
+        ...item,
+        dados_brutos: {
+          ...(item.dados_brutos || {}),
+          classificacao_mercadologica: {
+            source: "heuristic_ai_disabled",
+          },
+        },
+      })),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService({
+      mercadologicalClassificationService,
+    });
+
+    const status = await service.processSingleItem(15, {
+      ean: "7893736007527",
+      nome_recebido: "ACETICIL 100MG ENV 10CP",
+      fonte: "cliente_postgres",
+      dados_brutos: {
+        origem_nome: "cliente_postgres",
+        origem_dados: "cliente_postgres",
+        nome: "ACETICIL 100MG ENV 10CP",
+      },
+    });
+
+    expect(status).toBe("enriched");
+    expect(mercadologicalClassificationService.classifyItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ean: "7893736007527",
+      }),
+      expect.objectContaining({
+        disableAi: true,
+        disableAiReason: "falha em uma ou mais fontes de enriquecimento",
+      }),
+    );
+  });
+
   test("item vindo da vtex tambem e espelhado no fallback dedicado", async () => {
     const repository = {
       createItem: jest.fn().mockResolvedValue({

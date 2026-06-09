@@ -3,6 +3,7 @@ import { ConvertizeLookupSource } from "./enrichment/convertize-lookup.source.js
 import env from "../config/env.js";
 import { ConfigurableHtmlLookupSource } from "./enrichment/configurable-html-lookup.source.js";
 import { DrogasilLookupSource } from "./enrichment/drogasil-lookup.source.js";
+import { OpenAiWebLookupSource } from "./enrichment/openai-web-lookup.source.js";
 import { ImportProviderRegistry } from "./import/import-provider.registry.js";
 import { PostgresEmbalagemImportProvider } from "./import/postgres-embalagem-import.provider.js";
 import { TrierImportProvider } from "./import/trier-import.provider.js";
@@ -43,14 +44,24 @@ function resolveLookupSources({ apiSources, scraperSources, mode }) {
 }
 
 function createDefaultProductLookupSourceRegistry() {
-  const apiSources = [new ConvertizeLookupSource()];
-  const scraperSources = createConfiguredHtmlLookupSources();
+  const apiSources = [];
+  if (env.convertizeLookupEnabled) {
+    apiSources.push(new ConvertizeLookupSource());
+  }
 
-  return new ProductLookupSourceRegistry(resolveLookupSources({
-    apiSources,
-    scraperSources,
-    mode: env.lookupSourceMode,
-  }));
+  const scraperSources = createConfiguredHtmlLookupSources();
+  const fallbackSources = env.openAiWebLookupEnabled
+    ? [new OpenAiWebLookupSource()]
+    : [];
+
+  return new ProductLookupSourceRegistry([
+    ...resolveLookupSources({
+      apiSources,
+      scraperSources,
+      mode: env.lookupSourceMode,
+    }),
+    ...fallbackSources,
+  ]);
 }
 
 function createDefaultImportProviderRegistry() {

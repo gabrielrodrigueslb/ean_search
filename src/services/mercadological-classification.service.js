@@ -90,7 +90,9 @@ class MercadologicalClassificationService {
     return this.treeService.isConfigured();
   }
 
-  async classifyItem(item) {
+  async classifyItem(item, options = {}) {
+    const disableAi = options?.disableAi === true;
+    const disableAiReason = pickFirstString(options?.disableAiReason);
     const raw = item?.dados_brutos || item || {};
     const existingIngredients = ingredientListFromRaw(raw);
     const productContext = {
@@ -143,7 +145,7 @@ class MercadologicalClassificationService {
       });
     }
 
-    if (this.aiEnabled && this.openAiClient.isConfigured()) {
+    if (!disableAi && this.aiEnabled && this.openAiClient.isConfigured()) {
       try {
         const aiResult = await this.openAiClient.classifyProduct({
           product: productContext,
@@ -178,22 +180,35 @@ class MercadologicalClassificationService {
       }
     }
 
-    return this.buildHeuristicFallback(item, productContext, candidates, null);
+    return this.buildHeuristicFallback(item, productContext, candidates, null, {
+      disableAi,
+      disableAiReason,
+    });
   }
 
-  buildHeuristicFallback(item, productContext, candidates, errorMessage = null) {
+  buildHeuristicFallback(item, productContext, candidates, errorMessage = null, options = {}) {
     const selected = candidates[0];
+    const disableAi = options?.disableAi === true;
+    const disableAiReason = pickFirstString(options?.disableAiReason);
+    const source = disableAi
+      ? "heuristic_ai_disabled"
+      : errorMessage
+        ? "heuristic_after_openai_error"
+        : "heuristic";
+    const rationale = disableAi
+      ? `Fallback heuristico com IA desabilitada: ${disableAiReason || "falha nas fontes de enriquecimento."}`
+      : errorMessage
+        ? `Fallback heuristico apos falha da OpenAI: ${errorMessage}`
+        : "Melhor candidato escolhido por score lexical e sinais ja presentes no produto.";
 
     return this.buildClassifiedItem(item, {
       ...productContext,
       ...selected,
     }, {
-      source: errorMessage ? "heuristic_after_openai_error" : "heuristic",
+      source,
       confidence: 0.35,
       candidateCount: candidates.length,
-      rationale: errorMessage
-        ? `Fallback heuristico apos falha da OpenAI: ${errorMessage}`
-        : "Melhor candidato escolhido por score lexical e sinais ja presentes no produto.",
+      rationale,
       selectedCandidateId: selected.id,
     });
   }
