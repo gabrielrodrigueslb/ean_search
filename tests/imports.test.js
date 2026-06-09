@@ -151,6 +151,110 @@ describe("POST /imports/json", () => {
   });
 });
 
+describe("POST /imports/csv", () => {
+  beforeEach(() => {
+    enqueueItems.mockReset();
+  });
+
+  test("aceita upload no campo file", async () => {
+    const app = createApp();
+    enqueueItems.mockResolvedValue({
+      id: 51,
+      status: "pending",
+      total_itens: 1,
+    });
+
+    const response = await request(app)
+      .post("/imports/csv")
+      .attach("file", Buffer.from("ean,descricao\n7891058003890,ANADOR 1G 10 COMPRIMIDOS\n"), "produtos.csv");
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      id: 51,
+      importacao_id: 51,
+      status: "pending",
+      total_itens: 1,
+    });
+    expect(enqueueItems).toHaveBeenCalledWith(expect.objectContaining({
+      fonte: "csv",
+      items: [
+        expect.objectContaining({
+          ean: "7891058003890",
+          nome_recebido: "ANADOR 1G 10 COMPRIMIDOS",
+        }),
+      ],
+      productApi: {},
+    }));
+  });
+
+  test("aceita upload no campo arquivo", async () => {
+    const app = createApp();
+    enqueueItems.mockResolvedValue({
+      id: 52,
+      status: "pending",
+      total_itens: 1,
+    });
+
+    const response = await request(app)
+      .post("/imports/csv")
+      .attach("arquivo", Buffer.from("ean,descricao\n7891058009458,DORFLEX GOTAS\n"), "produtos.csv");
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      id: 52,
+      importacao_id: 52,
+      status: "pending",
+      total_itens: 1,
+    });
+    expect(enqueueItems).toHaveBeenCalledWith(expect.objectContaining({
+      fonte: "csv",
+      items: [
+        expect.objectContaining({
+          ean: "7891058009458",
+          nome_recebido: "DORFLEX GOTAS",
+        }),
+      ],
+      productApi: {},
+    }));
+  });
+
+  test("aceita csv enviado como corpo bruto", async () => {
+    const app = createApp();
+    enqueueItems.mockResolvedValue({
+      id: 53,
+      status: "pending",
+      total_itens: 1,
+    });
+
+    const response = await request(app)
+      .post("/imports/csv")
+      .set("Content-Type", "text/csv")
+      .set("X-File-Name", "produtos.csv")
+      .send(Buffer.from("ean,descricao,principio_ativo\n7891058003890,ANADOR 1G 10 COMPRIMIDOS,Dipirona Monoidratada\n"));
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      id: 53,
+      importacao_id: 53,
+      status: "pending",
+      total_itens: 1,
+    });
+    expect(enqueueItems).toHaveBeenCalledWith(expect.objectContaining({
+      fonte: "csv",
+      items: [
+        expect.objectContaining({
+          ean: "7891058003890",
+          nome_recebido: "ANADOR 1G 10 COMPRIMIDOS",
+          dados_brutos: expect.objectContaining({
+            ingrediente_ativo: "Dipirona Monoidratada",
+          }),
+        }),
+      ],
+      productApi: {},
+    }));
+  });
+});
+
 describe("POST /imports/trier", () => {
   beforeEach(() => {
     enqueueTrierImport.mockReset();
