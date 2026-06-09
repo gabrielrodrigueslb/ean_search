@@ -50,6 +50,77 @@ function cleanupTitle(value) {
     .trim();
 }
 
+function normalizeCandidateSpacing(value) {
+  return String(value || "")
+    .replace(/[._/|]+/g, " ")
+    .replace(/(\d)([A-Za-zÀ-ÿ])/g, "$1 $2")
+    .replace(/([A-Za-zÀ-ÿ])(\d)/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanupResidualMarketplaceNoise(value) {
+  return String(value || "")
+    .replace(/\s+gtin ean:\s*[0-9]+/gi, "")
+    .replace(/\s+ean:\s*[0-9]+/gi, "")
+    .replace(/\s*[|\-]\s*cosmos$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function preserveCommercialLineTokens(value) {
+  return String(value || "")
+    .replace(/\bDs\b/g, "DS")
+    .replace(/\bAz\b/g, "AZ")
+    .replace(/\bQ10\b/g, "Q10")
+    .replace(/\bD3\b/g, "D3")
+    .replace(/\bB5\b/g, "B5")
+    .replace(/\bFps\b/g, "FPS")
+    .replace(/\bUv\b/g, "UV");
+}
+
+function expandAbbreviations(value) {
+  const replacements = [
+    [/\bPO\b/gi, "Po"],
+    [/\bDESCOL\b/gi, "Descolorante"],
+    [/\bDESC\b/gi, "Descolorante"],
+    [/\bCOND\b/gi, "Condicionador"],
+    [/\bSH\b/gi, "Shampoo"],
+    [/\bTINT\b/gi, "Tintura"],
+    [/\bCPR\b/gi, "Comprimidos"],
+    [/\bCP\b/gi, "Comprimidos"],
+    [/\bCAPS?\b/gi, "Capsulas"],
+    [/\bCX\b/gi, "Caixa"],
+    [/\bAMP\b/gi, "Ampola"],
+  ];
+
+  let normalized = normalizeCandidateSpacing(value);
+  for (const [pattern, replacement] of replacements) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+
+  return normalized
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function applyContextualNameFixes(value) {
+  return String(value || "")
+    .replace(/\bPo Descolorante\b/gi, "Pó Descolorante")
+    .replace(/\bPo\b(?=\s+Descolorante\b)/gi, "Pó")
+    .replace(/\bMg\b/g, "mg")
+    .replace(/\bMl\b/g, "ml")
+    .replace(/\bG\b(?=$|\s)/g, "g");
+}
+
+function toTitleCase(value) {
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => token[0].toUpperCase() + token.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function isGenericProductLabel(value) {
   const normalized = normalizeText(value);
   if (!normalized) {
@@ -62,6 +133,24 @@ function isGenericProductLabel(value) {
   }
 
   return /\b(site|home|inicio|pagina)\b/.test(normalized);
+}
+
+function isPromotionalProductLabel(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return true;
+  }
+
+  return [
+    /\bachei\b.*\bmais barato\b/,
+    /\bconfira precos?\b/,
+    /\bcompre online\b/,
+    /\bmenor preco\b/,
+    /\bdescontos?\b/,
+    /\bdelivery\b/,
+    /\bofertas?\b/,
+    /\bgtin ean\b.*\bproduto\b/,
+  ].some((pattern) => pattern.test(normalized));
 }
 
 function getTokenOverlapScore(rawName, targetText) {
@@ -120,6 +209,35 @@ function extractProductNameFromSnippet(value) {
 
   const match = source.match(/([A-Za-zÀ-ÿ0-9 ,.-]{8,140}?)(?=\s+(?:C[ÓO]DIGO DO PRODUTO|GTIN|EAN|\/\s*Marca:|\|Marca:))/i);
   return pickFirstString(match?.[1]);
+}
+
+function buildNormalizedProductLabel(value) {
+  const cleaned = cleanupTitle(value);
+  if (!cleaned) {
+    return null;
+  }
+
+  return applyContextualNameFixes(
+    preserveCommercialLineTokens(
+      toTitleCase(cleanupResidualMarketplaceNoise(expandAbbreviations(cleaned))),
+    ),
+  );
+}
+
+function isAcceptedDisplayLabel(label, rawName = null) {
+  if (!label) {
+    return false;
+  }
+
+  if (isGenericProductLabel(label) || isPromotionalProductLabel(label)) {
+    return false;
+  }
+
+  if (rawName && getTokenOverlapScore(rawName, label) < 0.25 && isGenericProductLabel(label)) {
+    return false;
+  }
+
+  return true;
 }
 
 class PublicSearchLookupSource extends ProductLookupSourceContract {
@@ -317,34 +435,41 @@ class PublicSearchLookupSource extends ProductLookupSourceContract {
       return null;
     }
 
-    return acceptedCandidates.find((candidate) => !isGenericProductLabel(this.buildDisplayName(candidate, rawName)))
-      || acceptedCandidates[0];
+    return acceptedCandidates.find((candidate) => {
+      const label = this.buildCandidateDisplayName(candidate);
+      return isAcceptedDisplayLabel(label, rawName);
+    })
+      || null;
   }
 
-  buildDisplayName(candidate, rawName) {
+  buildCandidateDisplayName(candidate) {
     const preferredValues = [
       candidate.pageH1,
       cleanupTitle(candidate.title),
       cleanupTitle(candidate.pageTitle),
       extractProductNameFromSnippet(candidate.snippet),
-      rawName,
       candidate.title,
     ];
 
     for (const value of preferredValues) {
-      const label = pickFirstString(value);
+      const label = buildNormalizedProductLabel(value);
       if (!label) {
-        continue;
-      }
-
-      if (rawName && getTokenOverlapScore(rawName, label) < 0.25 && isGenericProductLabel(label)) {
         continue;
       }
 
       return label;
     }
 
-    return candidate.title;
+    return buildNormalizedProductLabel(candidate.title);
+  }
+
+  buildDisplayName(candidate, rawName) {
+    const label = this.buildCandidateDisplayName(candidate);
+    if (isAcceptedDisplayLabel(label, rawName)) {
+      return label;
+    }
+
+    return null;
   }
 }
 

@@ -104,6 +104,10 @@ const env = {
     process.env.LOOKUP_PASS_THROUGH_SOURCES,
     ["vtex"],
   ),
+  lookupFallbackRawNameSources: parseCsvList(
+    process.env.LOOKUP_FALLBACK_RAW_NAME_SOURCES,
+    ["csv", "cliente_postgres"],
+  ),
   drogasilLookupEnabled: process.env.DROGASIL_LOOKUP_ENABLED !== "false",
   consultaRemediosLookupEnabled: process.env.CONSULTA_REMEDIOS_LOOKUP_ENABLED !== "false",
   publicSearchLookupEnabled: process.env.PUBLIC_SEARCH_LOOKUP_ENABLED !== "false",

@@ -11,6 +11,31 @@ function createStructuredResponse(payload) {
 }
 
 describe("OpenAiWebLookupClient", () => {
+  test("instrui a IA a expandir abreviacoes no nome final quando houver evidencia", () => {
+    const client = new OpenAiWebLookupClient({
+      apiKey: "test-key",
+      httpClient: { post: jest.fn() },
+    });
+
+    const payload = client.buildRequestPayload({
+      ean: "7891234567890",
+      rawName: "SH PALMOLIVE 350ML NUTRI LISS",
+    });
+
+    expect(payload.input[0].content[0].text).toContain(
+      "trate as abreviacoes como pista de busca",
+    );
+    expect(payload.input[0].content[0].text).toContain(
+      "Nao devolva nome final abreviado ou truncado",
+    );
+    expect(payload.input[0].content[0].text).toContain(
+      "SAB LIQ, REF, ENV, PENT, TRAT, CP, CPS, CPD, UND, UNDS, C/100",
+    );
+    expect(payload.input[0].content[0].text).toContain(
+      "Nao tente expandir siglas legitimas",
+    );
+  });
+
   test("faz retry em 429 usando retry-after e reaproveita variacoes do nome bruto", async () => {
     const post = jest
       .fn()

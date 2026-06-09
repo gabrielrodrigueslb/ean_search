@@ -2,9 +2,12 @@ const DEFAULT_TRUSTED_NAME_SOURCES = ["convertize", "drogasil"];
 const DEFAULT_PREFERRED_NAME_SOURCES = ["convertize", "drogasil"];
 const DEFAULT_PREFERRED_DATA_SOURCES = ["convertize", "drogasil"];
 const DEFAULT_PASS_THROUGH_SOURCES = ["vtex"];
+const DEFAULT_FALLBACK_RAW_NAME_SOURCES = ["csv", "cliente_postgres"];
 
 const SOURCE_LABELS = {
   convertize: "Convertize",
+  csv: "CSV",
+  cliente_postgres: "Cliente Postgres",
   drogasil: "Drogasil",
   consulta_remedios: "Consulta Remedios",
   farmaindex: "FarmaIndex",
@@ -42,15 +45,25 @@ function isPassThroughSource(source, passThroughSources = DEFAULT_PASS_THROUGH_S
   return includesSource(passThroughSources, source);
 }
 
+function isFallbackRawNameSource(
+  source,
+  fallbackRawNameSources = DEFAULT_FALLBACK_RAW_NAME_SOURCES,
+) {
+  return includesSource(fallbackRawNameSources, source);
+}
+
 function isPublishableNameSource(
   source,
   {
     trustedSources = DEFAULT_TRUSTED_NAME_SOURCES,
     passThroughSources = DEFAULT_PASS_THROUGH_SOURCES,
+    fallbackRawNameSources = DEFAULT_FALLBACK_RAW_NAME_SOURCES,
+    allowFallbackRawName = false,
   } = {},
 ) {
   return isTrustedNameSource(source, trustedSources)
-    || isPassThroughSource(source, passThroughSources);
+    || isPassThroughSource(source, passThroughSources)
+    || (allowFallbackRawName && isFallbackRawNameSource(source, fallbackRawNameSources));
 }
 
 function formatSourceLabel(source) {
@@ -90,12 +103,14 @@ function formatSourceList(sources = []) {
 }
 
 export {
+  DEFAULT_FALLBACK_RAW_NAME_SOURCES,
   DEFAULT_PASS_THROUGH_SOURCES,
   DEFAULT_PREFERRED_DATA_SOURCES,
   DEFAULT_PREFERRED_NAME_SOURCES,
   DEFAULT_TRUSTED_NAME_SOURCES,
   formatSourceLabel,
   formatSourceList,
+  isFallbackRawNameSource,
   isPassThroughSource,
   isPublishableNameSource,
   isTrustedNameSource,

@@ -48,7 +48,6 @@ function classifyProductType({ raw = {}, ptResult = null, searchResult = null, d
     raw.departamento,
     raw.segmento,
     raw.subsegmento,
-    raw.grupo,
     raw.nome,
     raw.nome_produto,
     raw.nome_exibicao,

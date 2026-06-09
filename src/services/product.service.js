@@ -32,6 +32,7 @@ class ProductService {
     const trustedNameSource = isPublishableNameSource(raw.origem_nome, {
       trustedSources: this.trustedNameSources,
       passThroughSources: this.passThroughSources,
+      allowFallbackRawName: raw.raw_name_fallback_approved === true,
     });
     const nomeSocial = pickFirstString(
       trustedNameSource ? raw.nome_produto : null,

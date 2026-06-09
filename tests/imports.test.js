@@ -51,6 +51,7 @@ describe("GET /imports/:id", () => {
           ean: "7890010000403",
           nome_recebido: "DES. AXE AERO APOLO 97G",
           status: "review",
+          mensagem_erro: "Nome nao resolvido por fontes confiaveis.",
           dados_brutos: {
             nome_exibicao: "DES. AXE AERO APOLO 97G",
           },
@@ -62,12 +63,16 @@ describe("GET /imports/:id", () => {
         {
           ean: "7891058017507",
           nome_recebido: "Dorflex",
-          status: "enriched",
+          status: "failed",
+          mensagem_erro: "Fallback Postgres acionado apos falha na API: timeout",
           dados_brutos: {
             nome_exibicao: "Dorflex",
           },
           fontes_consultadas: {
-            action: "skipped_existing_in_banco_unico",
+            action: "stored_fallback",
+            api_error: {
+              message: "timeout",
+            },
           },
         },
         {
@@ -101,6 +106,41 @@ describe("GET /imports/:id", () => {
         {
           ean: "7890010000403",
           nome: "DES. AXE AERO APOLO 97G",
+          motivo: "Nome nao resolvido por fontes confiaveis.",
+          encontrado: false,
+        },
+      ],
+      total_itens_com_problema: 2,
+      itens_com_problema: [
+        {
+          ean: "7890010000403",
+          nome: "DES. AXE AERO APOLO 97G",
+          motivo: "Nome nao resolvido por fontes confiaveis.",
+          encontrado: false,
+        },
+        {
+          ean: "7891058017507",
+          nome: "Dorflex",
+          motivo: "Fallback Postgres acionado apos falha na API: timeout",
+          encontrado: null,
+        },
+      ],
+      total_itens_falha: 1,
+      itens_falha: [
+        {
+          ean: "7891058017507",
+          nome: "Dorflex",
+          motivo: "Fallback Postgres acionado apos falha na API: timeout",
+          encontrado: null,
+        },
+      ],
+      total_itens_revisao: 1,
+      itens_revisao: [
+        {
+          ean: "7890010000403",
+          nome: "DES. AXE AERO APOLO 97G",
+          motivo: "Nome nao resolvido por fontes confiaveis.",
+          encontrado: false,
         },
       ],
     });

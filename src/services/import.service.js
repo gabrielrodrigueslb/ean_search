@@ -196,6 +196,24 @@ class ImportService {
 
   async processItems({ importacaoId, fonte, items, productApi }) {
     const enrichmentSession = this.enrichmentService.createSession();
+    const streamState = {
+      pendingEntries: [],
+      eligibleEntries: [],
+      publishQueue: [],
+      producerFinished: false,
+      triageFinished: false,
+      enrichmentFinished: false,
+      consumerError: null,
+      seenEans: new Set(),
+      stagedTotal: 0,
+      triage: {
+        invalidos: 0,
+        duplicadosNoLote: 0,
+        existentesNoBancoUnico: 0,
+        elegiveisProcessamento: 0,
+      },
+    };
+    const stagingBatchSize = Math.max(4, env.importProviderTriageBatchSize);
 
     await this.importacaoRepository.updateImportacao(importacaoId, {
       status: "processing",
@@ -209,11 +227,66 @@ class ImportService {
       item_concurrency: this.getItemConcurrency(items.length),
     });
 
+    const triagePromise = this.consumeProviderEntryStream({
+      importacaoId,
+      sourceName: fonte,
+      streamState,
+      productApi,
+    });
+    const enrichmentPromise = this.processEligibleEntryStream({
+      importacaoId,
+      sourceName: fonte,
+      streamState,
+      enrichmentSession,
+      productApi,
+    });
+    const publishPromise = this.processPublishQueueStream({
+      importacaoId,
+      sourceName: fonte,
+      streamState,
+      productApi,
+    });
+
     try {
-      await this.processBatchItems(importacaoId, items, enrichmentSession, productApi);
+      for (const stagedItems of this.chunk(items, stagingBatchSize)) {
+        if (streamState.consumerError) {
+          throw streamState.consumerError;
+        }
+
+        const stagedBatch = await this.stageProviderItems(importacaoId, stagedItems);
+        streamState.pendingEntries.push(...stagedBatch);
+        streamState.stagedTotal += stagedBatch.length;
+
+        logger.info(`Lote armazenado em staging para ${fonte}`, {
+          importacao_id: importacaoId,
+          staged_itens_lote: stagedBatch.length,
+          staged_itens_total: streamState.stagedTotal,
+          itens_aguardando_consumidor: streamState.pendingEntries.length,
+          sample_eans: this.summarizeEans(stagedBatch.map((entry) => entry.item?.ean)),
+        });
+      }
+
+      streamState.producerFinished = true;
+      await triagePromise;
+      await enrichmentPromise;
+      await publishPromise;
 
       return this.finalizeImportacao(importacaoId, items.length);
     } catch (error) {
+      streamState.producerFinished = true;
+      streamState.triageFinished = true;
+      streamState.enrichmentFinished = true;
+
+      try {
+        await triagePromise;
+        await enrichmentPromise;
+        await publishPromise;
+      } catch (consumerError) {
+        if (!streamState.consumerError) {
+          streamState.consumerError = consumerError;
+        }
+      }
+
       await this.importacaoRepository.updateImportacao(importacaoId, {
         status: "failed",
         finished_at: new Date(),
@@ -222,10 +295,10 @@ class ImportService {
       logger.error("Falha geral da importacao", {
         importacao_id: importacaoId,
         fonte,
-        error: error.message,
+        error: streamState.consumerError?.message || error.message,
       });
 
-      throw error;
+      throw streamState.consumerError || error;
     }
   }
 

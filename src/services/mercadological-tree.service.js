@@ -47,6 +47,7 @@ class MercadologicalTreeService {
       columns: true,
       delimiter: ";",
       skip_empty_lines: true,
+      bom: true,
       trim: true,
     });
 

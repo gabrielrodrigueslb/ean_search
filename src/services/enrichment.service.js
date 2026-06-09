@@ -5,6 +5,7 @@ import { createDefaultProductLookupSourceRegistry } from "../providers/default-r
 import {
   formatSourceLabel,
   formatSourceList,
+  isFallbackRawNameSource,
   isPassThroughSource,
   isTrustedNameSource,
   normalizeSourceKey,
@@ -42,6 +43,129 @@ function extractDoseFromText(value) {
   return pickFirstString(match?.[0]);
 }
 
+function extractComparableTokens(value) {
+  const normalized = normalizeText(value);
+
+  return normalized
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => {
+      if (ALLOWED_SHORT_TOKENS.has(token)) {
+        return false;
+      }
+
+      if (/^\d+(?:[.,]\d+)?(?:mg|mcg|g|kg|ml|l|ui)?$/.test(token)) {
+        return false;
+      }
+
+      return token.length >= 3;
+    });
+}
+
+const ALLOWED_SHORT_TOKENS = new Set([
+  "de",
+  "da",
+  "do",
+  "das",
+  "dos",
+  "e",
+  "em",
+  "com",
+  "sem",
+  "para",
+  "por",
+  "x",
+  "ml",
+  "mg",
+  "g",
+  "kg",
+  "l",
+  "ui",
+]);
+
+const DISALLOWED_ABBREVIATION_TOKENS = new Set([
+  "adt",
+  "ped",
+  "derm",
+  "hosp",
+  "inal",
+  "inj",
+  "nas",
+  "oft",
+  "subl",
+  "vag",
+  "ret",
+  "top",
+  "iv",
+  "im",
+  "sc",
+  "cp",
+  "cpr",
+  "caps",
+  "cps",
+  "cap",
+  "drg",
+  "cr",
+  "pom",
+  "ung",
+  "xpe",
+  "xar",
+  "sol",
+  "susp",
+  "elx",
+  "gran",
+  "efv",
+  "mast",
+  "rev",
+  "past",
+  "gts",
+  "aer",
+  "col",
+  "supos",
+  "aplic",
+  "fr",
+  "amp",
+  "cart",
+  "cx",
+  "bl",
+  "sach",
+  "bisn",
+  "pct",
+  "flac",
+  "env",
+  "ser",
+  "un",
+  "gen",
+  "ref",
+  "sim",
+  "control",
+  "sh",
+  "cond",
+  "descol",
+  "sabon",
+  "sabonliq",
+  "escdente",
+  "pastadente",
+  "desod",
+  "hidrat",
+  "prot",
+  "frd",
+  "lenco",
+  "pomassadura",
+  "mam",
+  "chup",
+  "abs",
+  "absorv",
+  "term",
+  "cm",
+]);
+
+const DISALLOWED_ABBREVIATION_PATTERNS = [
+  /^\d+(?:cp|cpr|caps|cps|cap|drg|gts|amp|fr|cx|bl|sach|pct|un)$/i,
+  /^(?:sh|cond|cr|pom|sol|susp|xpe|xar|col|env|fr|amp|cx|pct|ref|sim|gen)\d+$/i,
+  /[./]/,
+];
+
 class EnrichmentService {
   constructor({
     lookupSourceRegistry,
@@ -49,6 +173,7 @@ class EnrichmentService {
     preferredNameSources = env.lookupPreferredNameSources,
     preferredDataSources = env.lookupPreferredDataSources,
     passThroughSources = env.lookupPassThroughSources,
+    fallbackRawNameSources = env.lookupFallbackRawNameSources,
   } = {}) {
     this.lookupSourceRegistry = lookupSourceRegistry || createDefaultProductLookupSourceRegistry();
     this.trustedNameSources = normalizeSourceKeys(trustedNameSources);
@@ -61,6 +186,7 @@ class EnrichmentService {
       ...this.trustedNameSources,
     ]);
     this.passThroughSources = normalizeSourceKeys(passThroughSources);
+    this.fallbackRawNameSources = normalizeSourceKeys(fallbackRawNameSources);
   }
 
   createSession() {
@@ -129,6 +255,26 @@ class EnrichmentService {
         };
       }
 
+      if (this.canUseRawNameFallback({ item, source, fallbackName })) {
+        const normalizedSource = normalizeSourceKey(source);
+
+        return {
+          item: this.applyRawNameFallback(item, {
+            source: normalizedSource,
+            fallbackName,
+          }),
+          enriched: true,
+          requiresApproval: false,
+          approvalReason: null,
+          fontes_consultadas: {
+            ...fontesConsultadas,
+            encontrado: false,
+            raw_name_fallback_source: normalizedSource,
+            raw_name_fallback_reason: "trusted_raw_name_without_external_match",
+          },
+        };
+      }
+
       const approvalReason = this.buildApprovalReason({ lookups });
 
       return {
@@ -158,6 +304,70 @@ class EnrichmentService {
     });
     const trustedNameResolved = this.isTrustedNameSource(snapshot.dados_brutos.origem_nome);
 
+    if (!trustedNameResolved) {
+      const raw = item.dados_brutos || item;
+      const source = raw?.origem_nome || raw?.origem_dados || item?.fonte || null;
+      const fallbackName = pickFirstString(
+        raw?.nome_exibicao,
+        raw?.nome_produto,
+        raw?.nome,
+        item?.nome_recebido,
+      );
+
+      if (this.canUseRawNameFallback({ item, source, fallbackName })) {
+        const normalizedSource = normalizeSourceKey(source);
+
+        return {
+          item: this.applyRawNameFallback({
+            ...item,
+            dados_brutos: {
+              ...(item.dados_brutos || item),
+              ...snapshot.dados_brutos,
+            },
+          }, {
+            source: normalizedSource,
+            fallbackName,
+          }),
+          enriched: true,
+          requiresApproval: false,
+          approvalReason: null,
+          fontes_consultadas: {
+            ...fontesConsultadas,
+            encontrado: true,
+            raw_name_fallback_source: normalizedSource,
+            raw_name_fallback_reason: "trusted_raw_name_preferred_over_untrusted_lookup",
+          },
+        };
+      }
+
+      if (this.canApproveResolvedLookupName({
+        source,
+        fallbackName,
+        resolvedName: snapshot.nome_recebido,
+        resolvedRaw: snapshot.dados_brutos,
+      })) {
+        return {
+          item: this.applyResolvedLookupApproval({
+            ...item,
+            nome_recebido: snapshot.nome_recebido,
+            dados_brutos: {
+              ...(item.dados_brutos || item),
+              ...snapshot.dados_brutos,
+            },
+          }),
+          enriched: true,
+          requiresApproval: false,
+          approvalReason: null,
+          fontes_consultadas: {
+            ...fontesConsultadas,
+            encontrado: true,
+            raw_name_fallback_source: normalizeSourceKey(source),
+            raw_name_fallback_reason: "lookup_resolved_abbreviated_raw_name",
+          },
+        };
+      }
+    }
+
     return {
       item: {
         ...item,
@@ -175,6 +385,167 @@ class EnrichmentService {
       fontes_consultadas: {
         ...fontesConsultadas,
         encontrado: true,
+      },
+    };
+  }
+
+  hasStructuredFallbackName(name) {
+    const value = pickFirstString(name);
+    if (!value) {
+      return false;
+    }
+
+    const normalized = normalizeText(value);
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    const alphaCount = (normalized.match(/[a-z]/g) || []).length;
+
+    if (tokens.length < 2 || alphaCount < 8) {
+      return false;
+    }
+
+    if (/^(produto|item|diversos?|generico)$/i.test(normalized)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  hasReadableFallbackName(name) {
+    const value = pickFirstString(name);
+    if (!value) {
+      return false;
+    }
+
+    const normalized = normalizeText(value);
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+
+    const abbreviatedTokens = tokens.filter((token) => {
+      if (ALLOWED_SHORT_TOKENS.has(token)) {
+        return false;
+      }
+
+      if (DISALLOWED_ABBREVIATION_TOKENS.has(token)) {
+        return true;
+      }
+
+      if (DISALLOWED_ABBREVIATION_PATTERNS.some((pattern) => pattern.test(token))) {
+        return true;
+      }
+
+      if (/^\d+(?:[.,]\d+)?(?:mg|mcg|g|kg|ml|l|ui)?$/.test(token)) {
+        return false;
+      }
+
+      if (token.length <= 2) {
+        return true;
+      }
+
+      if (token.length <= 4 && !/[aeiou]/.test(token)) {
+        return true;
+      }
+
+      return false;
+    });
+
+    return abbreviatedTokens.length === 0;
+  }
+
+  canUseRawNameFallback({ item, source, fallbackName }) {
+    const normalizedSource = normalizeSourceKey(source);
+    if (!this.isFallbackRawNameSource(normalizedSource)) {
+      return false;
+    }
+
+    if (!this.hasStructuredFallbackName(fallbackName)) {
+      return false;
+    }
+
+    if (!this.hasReadableFallbackName(fallbackName)) {
+      return false;
+    }
+
+    const raw = item?.dados_brutos || item || {};
+    const hasIngredients = Boolean(
+      pickFirstString(raw.ingrediente_ativo)
+      || (Array.isArray(raw.farmacos) && raw.farmacos.length),
+    );
+    const inferredType = classifyProductType({ raw });
+
+    return inferredType !== "medicamento" || hasIngredients;
+  }
+
+  hasMeaningfulTokenOverlap(leftName, rightName) {
+    const leftTokens = new Set(extractComparableTokens(leftName));
+    const rightTokens = new Set(extractComparableTokens(rightName));
+
+    let overlap = 0;
+
+    for (const token of leftTokens) {
+      if (rightTokens.has(token)) {
+        overlap += 1;
+      }
+    }
+
+    return overlap >= 2;
+  }
+
+  canApproveResolvedLookupName({ source, fallbackName, resolvedName, resolvedRaw }) {
+    const normalizedSource = normalizeSourceKey(source);
+    if (!this.isFallbackRawNameSource(normalizedSource)) {
+      return false;
+    }
+
+    if (!this.hasStructuredFallbackName(fallbackName) || this.hasReadableFallbackName(fallbackName)) {
+      return false;
+    }
+
+    if (!this.hasStructuredFallbackName(resolvedName) || !this.hasReadableFallbackName(resolvedName)) {
+      return false;
+    }
+
+    if (normalizeText(fallbackName) === normalizeText(resolvedName)) {
+      return false;
+    }
+
+    if (!this.hasMeaningfulTokenOverlap(fallbackName, resolvedName)) {
+      return false;
+    }
+
+    const hasIngredients = Boolean(
+      pickFirstString(resolvedRaw.ingrediente_ativo)
+      || (Array.isArray(resolvedRaw.farmacos) && resolvedRaw.farmacos.length),
+    );
+    const inferredType = classifyProductType({ raw: resolvedRaw });
+
+    return inferredType !== "medicamento" || hasIngredients;
+  }
+
+  applyRawNameFallback(item, { source, fallbackName }) {
+    const raw = item?.dados_brutos || item || {};
+
+    return {
+      ...item,
+      nome_recebido: fallbackName,
+      dados_brutos: {
+        ...raw,
+        nome: pickFirstString(raw.nome, fallbackName),
+        nome_produto: pickFirstString(raw.nome_produto, fallbackName),
+        nome_exibicao: pickFirstString(raw.nome_exibicao, fallbackName),
+        origem_nome: source,
+        origem_dados: raw.origem_dados || source,
+        raw_name_fallback_approved: true,
+      },
+    };
+  }
+
+  applyResolvedLookupApproval(item) {
+    const raw = item?.dados_brutos || item || {};
+
+    return {
+      ...item,
+      dados_brutos: {
+        ...raw,
+        raw_name_fallback_approved: true,
       },
     };
   }
@@ -528,6 +899,10 @@ class EnrichmentService {
 
   isPassThroughSource(source) {
     return isPassThroughSource(source, this.passThroughSources);
+  }
+
+  isFallbackRawNameSource(source) {
+    return isFallbackRawNameSource(source, this.fallbackRawNameSources);
   }
 
   resolveTipo({ raw, ptResult, searchResult, detail }) {

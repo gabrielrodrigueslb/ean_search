@@ -33,6 +33,9 @@ const env = envModule.default;
 describe("ImportService processSingleItem", () => {
   afterEach(() => {
     env.importItemConcurrency = 3;
+    env.importProviderTriageBatchSize = 32;
+    env.importPublishBatchSize = 10;
+    env.importPublishFlushMs = 1500;
   });
 
   test("salva fallback no Postgres quando a publicacao na API falha", async () => {
@@ -349,6 +352,11 @@ describe("ImportService processSingleItem", () => {
         ...item,
         dados_brutos: {
           ...(item.dados_brutos || {}),
+          origem_nome: "vtex",
+          origem_dados: "vtex",
+          nome: (item.dados_brutos || {}).nome || "ACETICIL 100MG ENV 10CP",
+          nome_produto: (item.dados_brutos || {}).nome_produto || "ACETICIL 100MG ENV 10CP",
+          nome_exibicao: (item.dados_brutos || {}).nome_exibicao || "ACETICIL 100MG ENV 10CP",
           classificacao_mercadologica: {
             source: "heuristic_ai_disabled",
           },
@@ -677,6 +685,139 @@ describe("ImportService processSingleItem", () => {
       fontes_consultadas: expect.objectContaining({
         action: "skipped_duplicate_in_provider_batch",
       }),
+    }));
+  });
+
+  test("processa importacao csv com triagem antes do enriquecimento e publicacao em lote", async () => {
+    env.importItemConcurrency = 3;
+    env.importProviderTriageBatchSize = 2;
+    env.importPublishBatchSize = 10;
+    env.importPublishFlushMs = 50;
+
+    const repository = {
+      createItem: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 401,
+          importacao_id: 30,
+          ean: "7891058017507",
+          nome_recebido: "Dorflex 36 comprimidos",
+        })
+        .mockResolvedValueOnce({
+          id: 402,
+          importacao_id: 30,
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos",
+        })
+        .mockResolvedValueOnce({
+          id: 403,
+          importacao_id: 30,
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos repetido",
+        }),
+      updateItem: jest.fn().mockImplementation(async (id, data) => ({
+        id,
+        ...data,
+      })),
+      createProdutoAprovacao: jest.fn(),
+      createProdutoFallbackApi: jest.fn(),
+      updateImportacao: jest.fn().mockImplementation(async (_id, data) => ({
+        id: 30,
+        ...data,
+      })),
+      incrementImportacaoCounters: jest.fn().mockResolvedValue({}),
+      findImportacaoById: jest.fn().mockResolvedValue({
+        id: 30,
+        itens_falha: 0,
+        itens_processados: 3,
+        itens_sucesso: 2,
+        itens_revisao: 0,
+      }),
+    };
+
+    const enrichmentService = {
+      createSession: jest.fn(() => ({ lookupCache: new Map() })),
+      enrichImportedItem: jest.fn().mockResolvedValue({
+        enriched: true,
+        requiresApproval: false,
+        item: {
+          ean: "7899547531213",
+          nome_recebido: "Dipirona 500mg 30 comprimidos",
+          dados_brutos: {
+            origem_nome: "drogasil",
+            origem_dados: "drogasil",
+            nome: "Dipirona 500mg 30 comprimidos",
+            nome_produto: "Dipirona 500mg 30 comprimidos",
+            nome_exibicao: "Dipirona 500mg 30 comprimidos",
+            categoria: "Dor e Febre",
+            laboratorio: "Prati",
+            farmacos: [{ nome: "Dipirona Monoidratada" }],
+          },
+        },
+        fontes_consultadas: {
+          drogasil_busca: true,
+          drogasil_detalhe: true,
+          encontrado: true,
+        },
+      }),
+    };
+
+    const bancoUnicoService = {
+      searchProductsByEans: jest
+        .fn()
+        .mockResolvedValueOnce({
+          requested: 2,
+          returned: 1,
+          missing: 1,
+          products: [
+            { ean: "7891058017507", descricaoProduto: "Dorflex 36 comprimidos" },
+          ],
+          missingEans: ["7899547531213"],
+        })
+        .mockResolvedValueOnce({
+          requested: 1,
+          returned: 0,
+          missing: 1,
+          products: [],
+          missingEans: ["7899547531213"],
+        }),
+      publishProduct: jest.fn().mockResolvedValue({ ok: true }),
+      publishProducts: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    ImportacaoRepository.mockImplementation(() => repository);
+    EnrichmentService.mockImplementation(() => enrichmentService);
+    BancoUnicoService.mockImplementation(() => bancoUnicoService);
+
+    const service = new ImportService({
+      mercadologicalClassificationService: {
+        classifyItem: jest.fn(async (item) => item),
+      },
+    });
+
+    const result = await service.processItems({
+      importacaoId: 30,
+      fonte: "csv",
+      items: [
+        { ean: "7891058017507", nome_recebido: "Dorflex 36 comprimidos", fonte: "csv" },
+        { ean: "7899547531213", nome_recebido: "Dipirona 500mg 30 comprimidos", fonte: "csv" },
+        { ean: "7899547531213", nome_recebido: "Dipirona 500mg 30 comprimidos repetido", fonte: "csv" },
+      ],
+      productApi: {},
+    });
+
+    expect(result.status).toBe("completed");
+    expect(bancoUnicoService.searchProductsByEans).toHaveBeenCalledTimes(1);
+    expect(enrichmentService.enrichImportedItem).toHaveBeenCalledTimes(1);
+    expect(bancoUnicoService.publishProduct).toHaveBeenCalledTimes(1);
+    expect(bancoUnicoService.publishProducts).not.toHaveBeenCalled();
+    expect(repository.updateItem).toHaveBeenCalledWith(401, expect.objectContaining({
+      status: "enriched",
+      mensagem_erro: "Produto descartado porque o EAN 7891058017507 ja existe no Banco Unico.",
+    }));
+    expect(repository.updateItem).toHaveBeenCalledWith(403, expect.objectContaining({
+      status: "enriched",
+      mensagem_erro: "Produto descartado por EAN duplicado no lote do provedor: 7899547531213.",
     }));
   });
 });

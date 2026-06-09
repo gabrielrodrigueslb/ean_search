@@ -26,6 +26,12 @@ function summarizeImportItem(item) {
   return {
     ean: String(item?.ean || ""),
     nome: extractNotFoundName(item),
+    motivo: pickFirstString(
+      item?.mensagem_erro,
+      item?.fontes_consultadas?.ai_error,
+      item?.fontes_consultadas?.api_error?.message,
+    ),
+    encontrado: item?.fontes_consultadas?.encontrado ?? null,
   };
 }
 
@@ -37,10 +43,19 @@ function buildImportacaoResumo(importacao) {
       && item?.fontes_consultadas?.approval_required === true
       && item?.fontes_consultadas?.encontrado === false
   ));
+  const itensComProblema = itens.filter((item) => item?.status === "failed" || item?.status === "review");
+  const itensFalha = itensComProblema.filter((item) => item?.status === "failed");
+  const itensRevisao = itensComProblema.filter((item) => item?.status === "review");
 
   return {
     total_produtos_nao_encontrados: itensNaoEncontrados.length,
     produtos_nao_encontrados: itensNaoEncontrados.map((item) => summarizeImportItem(item)),
+    total_itens_com_problema: itensComProblema.length,
+    itens_com_problema: itensComProblema.map((item) => summarizeImportItem(item)),
+    total_itens_falha: itensFalha.length,
+    itens_falha: itensFalha.map((item) => summarizeImportItem(item)),
+    total_itens_revisao: itensRevisao.length,
+    itens_revisao: itensRevisao.map((item) => summarizeImportItem(item)),
   };
 }
 
